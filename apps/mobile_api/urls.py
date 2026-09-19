@@ -12,6 +12,8 @@ urlpatterns = [
 
     # 2. User Profile & Dashboard Summary
     path('profile/', views.UserProfileView.as_view(), name='mobile_api_profile'),
+    path('student/profile/update/', views.MobileStudentSelfProfileUpdateView.as_view(), name='mobile_api_student_self_profile_update'),
+    path('students/my-profile/', views.MobileStudentSelfProfileUpdateView.as_view(), name='mobile_api_student_my_profile'),
     path('dashboard/', views.MobileDashboardSummaryView.as_view(), name='mobile_api_dashboard'),
 
     # 3. QR Attendance Scanning, Assembly, Hourly Attendance & History

@@ -2043,4 +2043,71 @@ def get_student_study_tracking_book_data(student, academic_year=None, context_ca
     }
 
 
+def get_exam_at_risk_students(academic_year=None, threshold_sessions=8):
+    """
+    Evaluates students at risk of exam suspension (Exam Eligibility & Suspension Calculation).
+    Identifies students with chronic unexcused absences (default: >= 8 sessions = 4.0 days).
+
+    NOTE ON SCHOOL POLICY (គោលការណ៍គណនាសិទ្ធិប្រឡង):
+    The system ONLY alerts/notifies Admin about at-risk students.
+    The system NEVER automatically suspends or disqualifies students from exams.
+    Actual Exam Suspension (is_exam_suspended) must be manually toggled (ON/OFF) by Admin exclusively.
+
+    Returns:
+        dict: {
+            student_id: {
+                'student_id': int,
+                'absent_sessions': int,
+                'absent_days': float,
+                'risk_level': str ('HIGH', 'MEDIUM'),
+                'risk_reason': str,
+            }
+        }
+    """
+    from apps.attendance.models import StudentAttendance
+    from apps.students.models import Student
+
+    qs = StudentAttendance.objects.filter(
+        status=StudentAttendance.Status.ABSENT,
+        student__status=Student.Status.ACTIVE
+    )
+    if academic_year:
+        qs = qs.filter(Q(student__academic_year=academic_year) | Q(student__classroom__academic_year=academic_year))
+
+    records = qs.values('student_id', 'date', 'session').distinct()
+    counts = {}
+    for r in records:
+        sid = r['student_id']
+        counts[sid] = counts.get(sid, 0) + 1
+
+    at_risk_map = {}
+    for sid, absent_times in counts.items():
+        if absent_times >= threshold_sessions:
+            absent_days = round(absent_times * 0.5, 1)
+            at_risk_map[sid] = {
+                'student_id': sid,
+                'absent_sessions': absent_times,
+                'absent_days': absent_days,
+                'risk_level': 'HIGH' if absent_times >= 8 else 'MEDIUM',
+                'risk_reason': f"អវត្តមានឥតច្បាប់ {absent_days} ថ្ងៃ ({absent_times} វេន)"
+            }
+    return at_risk_map
+
+
+def get_exam_at_risk_student_list(academic_year=None, threshold_sessions=8):
+    """
+    Returns list of active Student instances flagged as at-risk for exam suspension,
+    annotated with .exam_at_risk_info, sorted descending by absent session count.
+    """
+    at_risk_map = get_exam_at_risk_students(academic_year=academic_year, threshold_sessions=threshold_sessions)
+    if not at_risk_map:
+        return []
+    students = list(Student.objects.filter(id__in=at_risk_map.keys(), status=Student.Status.ACTIVE).select_related('classroom'))
+    for s in students:
+        s.exam_at_risk_info = at_risk_map.get(s.id, {})
+    students.sort(key=lambda x: x.exam_at_risk_info.get('absent_sessions', 0), reverse=True)
+    return students
+
+
+
 

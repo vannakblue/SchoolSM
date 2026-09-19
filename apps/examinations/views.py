@@ -5926,6 +5926,13 @@ def exam_exclusions_manage(request):
     
     total_exclusions = exclusions_qs.count()
     active_exclusions = exclusions_qs.filter(is_active=True).count()
+    from apps.examinations.services import get_exam_at_risk_student_list
+    all_at_risk = get_exam_at_risk_student_list(academic_year=target_year, threshold_sessions=8)
+    excluded_active_ids = set(exclusions_qs.filter(is_active=True).values_list('student_id', flat=True))
+    at_risk_pending = [
+        s for s in all_at_risk 
+        if not s.is_exam_suspended and s.id not in excluded_active_ids
+    ]
 
     return render(request, 'examinations/exclusions_manage.html', {
         'exclusions': exclusions_qs,
@@ -5938,6 +5945,8 @@ def exam_exclusions_manage(request):
         'target_year': target_year,
         'total_exclusions': total_exclusions,
         'active_exclusions': active_exclusions,
+        'at_risk_students': at_risk_pending,
+        'at_risk_count': len(at_risk_pending),
         'selected_year_id': str(target_year.id) if target_year else '',
         'selected_term_id': selected_term_id or '',
         'selected_month': selected_month or '',

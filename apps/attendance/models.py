@@ -119,6 +119,18 @@ class AttendanceSetting(models.Model):
         null=True,
         verbose_name="Telegram Group គណៈគ្រប់គ្រងសាលា (អាចដាក់ច្រើន Chat ID) / Management Telegram Chat IDs"
     )
+    homeroom_group_chat_id = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Telegram Group គ្រូបន្ទុកថ្នាក់ (អាចដាក់ច្រើន Chat ID) / Homeroom Teachers Group Chat IDs"
+    )
+    custom_dispatch_groups = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name="Group Telegram ផ្សេងៗទៀត (Custom Group Chat IDs) / Other Telegram Groups"
+    )
     is_maintenance_mode = models.BooleanField(
         default=False,
         verbose_name="បិទប្រព័ន្ធជាបណ្តោះអាសន្នសម្រាប់ថែទាំ / Maintenance Mode Lockout"

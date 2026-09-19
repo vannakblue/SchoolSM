@@ -105,9 +105,9 @@
 {% endif %}
 
 <!-- Real-time Status Counters -->
-<div class="row g-3 mb-4">
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-warning">
+<div class="row row-cols-2 row-cols-md-5 g-3 mb-4">
+    <div class="col">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-warning h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small fw-bold">សេចក្តីជូនដំណឹង (Notices)</div>
@@ -119,8 +119,8 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-info">
+    <div class="col">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-info h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small fw-bold">អត្ថបទ & ព័ត៌មាន (News)</div>
@@ -132,8 +132,21 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-primary">
+    <div class="col">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 h-100" style="border-color: #9333ea !important;">
+            <div class="d-flex align-items-center justify-content-between">
+                <div>
+                    <div class="text-muted small fw-bold">អាល់ប៊ុមរូបភាព (Gallery)</div>
+                    <h3 class="fw-bold mb-0" style="color: #9333ea;">{{ gallery_count|default:0 }}</h3>
+                </div>
+                <div class="p-2.5 rounded-3" style="background-color: #f3e8ff; color: #9333ea;">
+                    <i class="fa-solid fa-images fs-4"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-primary h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small fw-bold">ព័ត៌មានសាលា (Profile)</div>
@@ -145,8 +158,8 @@
             </div>
         </div>
     </div>
-    <div class="col-6 col-md-3">
-        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-danger">
+    <div class="col">
+        <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-4 border-danger h-100">
             <div class="d-flex align-items-center justify-content-between">
                 <div>
                     <div class="text-muted small fw-bold">សារទំនាក់ទំនង (Inquiries)</div>
@@ -254,9 +267,19 @@
                             <i class="fa-solid fa-newspaper text-info me-1"></i> News
                         </span>
                     </td>
-                    <td class="fw-semibold">អត្ថបទ និងព័ត៌មានថ្មីៗ</td>
-                    <td class="small text-muted">ID, កាលបរិច្ឆេទ, ចំណងជើង, ប្រភេទ, ខ្លឹមសារសង្ខេប, ខ្លឹមសារពេញលេញ, រូប Cover, Featured, ផ្សាយ</td>
-                    <td class="small text-success"><i class="fa-solid fa-check me-1"></i>Update តាម ID • បើគ្មាន ID បង្កើតថ្មី & ផ្ញើ ID ត្រឡប់</td>
+                    <td class="fw-semibold">អត្ថបទ និងព័ត៌មានថ្មីៗ (Bilingual)</td>
+                    <td class="small text-muted">ID, កាលបរិច្ឆេទ, ចំណងជើង (Khmer & English), ប្រភេទ, ខ្លឹមសារសង្ខេប, ខ្លឹមសារពេញលេញ, រូប Cover, Featured, ផ្សាយ</td>
+                    <td class="small text-success"><i class="fa-solid fa-check me-1"></i>Update តាម ID • បើគ្មាន ID បង្កើតថ្មី & Auto Translate បើ English ទំនេរ</td>
+                </tr>
+                <tr>
+                    <td>
+                        <span class="badge text-dark border px-2.5 py-1.5 fw-bold" style="background-color: #f3e8ff; border-color: #c084fc;">
+                            <i class="fa-solid fa-images me-1" style="color: #9333ea;"></i> Gallery_Albums
+                        </span>
+                    </td>
+                    <td class="fw-semibold">អាល់ប៊ុមរូបភាពសកម្មភាពសាលា (Bilingual)</td>
+                    <td class="small text-muted">ID, កាលបរិច្ឆេទ, ឈ្មោះ (Khmer), ឈ្មោះ (English), ការពិពណ៌នា (Khmer), ការពិពណ៌នា (English), ផ្សាយ</td>
+                    <td class="small text-success"><i class="fa-solid fa-check me-1"></i>Update តាម ID • បើគ្មាន ID បង្កើតថ្មី & Auto Translate បើ English ទំនេរ</td>
                 </tr>
                 <tr>
                     <td>

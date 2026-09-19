@@ -32,9 +32,21 @@
             </div>
         </div>
         {% if student %}
-        <div class="col-auto d-none d-md-block text-end">
+        <div class="col-auto d-flex flex-wrap gap-2 text-end">
             <a href="{% url 'student_id_card' student.id %}" target="_blank" class="btn btn-light btn-sm fw-bold">
-                <i class="fa-solid fa-address-card me-1"></i> កាតសិស្ស (ID Card)
+                <i class="fa-solid fa-address-card me-1"></i> កាតសិស្ស
+            </a>
+            {% if allow_student_self_update %}
+            <a href="{% url 'student_self_edit' %}" class="btn btn-warning btn-sm fw-bold shadow-xs text-dark">
+                <i class="fa-solid fa-user-pen me-1"></i> កែប្រែព័ត៌មាន
+            </a>
+            {% else %}
+            <button type="button" class="btn btn-light btn-sm opacity-75" disabled title="{{ student_update_closed_message }}">
+                <i class="fa-solid fa-lock me-1"></i> ការកែប្រែត្រូវបានបិទ
+            </button>
+            {% endif %}
+            <a href="{% url 'student_detail' student.id %}" class="btn btn-outline-light btn-sm fw-bold">
+                <i class="fa-solid fa-id-badge me-1"></i> ប្រវត្តិរូប
             </a>
         </div>
         {% endif %}

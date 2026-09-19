@@ -129,6 +129,7 @@
                 <option value="">-- {% if is_khmer %}សិទ្ធិប្រឡងទាំងអស់{% else %}All Exam Statuses{% endif %} --</option>
                 <option value="eligible" {% if selected_exam_status == 'eligible' %}selected{% endif %}>🟢 {% if is_khmer %}មានសិទ្ធិប្រឡង{% else %}Exam Eligible{% endif %}</option>
                 <option value="disqualified" {% if selected_exam_status == 'disqualified' %}selected{% endif %}>🔴 {% if is_khmer %}ដកសិទ្ធិប្រឡង{% else %}Disqualified{% endif %}</option>
+                <option value="at_risk" {% if selected_exam_status == 'at_risk' %}selected{% endif %}>⚠️ {% if is_khmer %}ប្រឈមដកសិទ្ធិ{% else %}At-Risk{% endif %} ({{ at_risk_count }})</option>
             </select>
         </div>
         <div class="col-md-1 d-flex gap-1">
@@ -139,6 +140,36 @@
         </div>
     </form>
 </div>
+
+<!-- At-Risk Alert Banner for Exam Eligibility -->
+{% if at_risk_count > 0 %}
+<div class="alert alert-warning border-0 rounded-4 shadow-sm p-3 mb-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center shadow-xs" style="width: 44px; height: 44px; flex-shrink: 0;">
+            <i class="fa-solid fa-triangle-exclamation fs-5"></i>
+        </div>
+        <div>
+            <div class="fw-bold text-dark fs-6">
+                ⚠️ ការគណនាសិទ្ធិប្រឡង (Exam Eligibility Alert)៖ រកឃើញសិស្ស <span class="badge bg-danger text-white fs-6 px-2.5 py-0.5">{{ at_risk_count }}</span> នាក់ប្រឈមនឹងការដកសិទ្ធិប្រឡង (អវត្តមានឥតច្បាប់ច្រើន)
+            </div>
+            <div class="small text-muted mt-0.5">
+                <i class="fa-solid fa-circle-info text-primary me-1"></i><strong>គោលការណ៍សាលា៖</strong> ប្រព័ន្ធគ្រាន់តែ Alert ជូនដំណឹងបញ្ជាក់ប្រាប់ Admin ប៉ុណ្ណោះ។ ចំពោះការដកសិទ្ធិប្រឡង (Exam Suspension) គឺត្រូវបិទ ឬបើកដោយ Admin ទាំងអស់ (Manual Control Only)។
+            </div>
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        {% if selected_exam_status == 'at_risk' %}
+        <a href="{% url 'student_list' %}" class="btn btn-outline-dark btn-sm fw-bold">
+            <i class="fa-solid fa-list me-1"></i> បង្ហាញសិស្សទាំងអស់
+        </a>
+        {% else %}
+        <a href="{% url 'student_list' %}?exam_status=at_risk" class="btn btn-warning btn-sm fw-bold text-dark shadow-xs">
+            <i class="fa-solid fa-filter me-1"></i> ចម្រាញ់សិស្សប្រឈម ({{ at_risk_count }})
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 <!-- Floating Bulk Actions Toolbar (Visible when 1+ checkboxes selected) -->
 {% if is_admin %}
@@ -243,6 +274,15 @@
                                   {% if is_admin %}role="button" onclick="openExamModal({{ s.id }}, '{{ s.khmer_name|escapejs }}', '{{ s.student_id }}', false, 'DISCIPLINARY', '')"{% endif %}>
                                 <i class="fa-solid fa-circle-check me-1"></i> មានសិទ្ធិប្រឡង
                             </span>
+                            {% if s.is_exam_at_risk %}
+                            <div class="mt-1">
+                                <span class="badge bg-warning text-dark border border-warning shadow-xs"
+                                      {% if is_admin %}role="button" onclick="openExamModal({{ s.id }}, '{{ s.khmer_name|escapejs }}', '{{ s.student_id }}', false, 'UNEXCUSED_ABSENCE', 'អវត្តមានឥតច្បាប់ {{ s.exam_at_risk_info.absent_days }} ថ្ងៃ ({{ s.exam_at_risk_info.absent_sessions }} វេន)')"{% endif %}
+                                      title="{{ s.exam_at_risk_info.risk_reason }}">
+                                    <i class="fa-solid fa-triangle-exclamation me-1"></i> ប្រឈម ({{ s.exam_at_risk_info.absent_days }} ថ្ងៃ)
+                                </span>
+                            </div>
+                            {% endif %}
                         {% endif %}
                     </td>
                     <td class="text-end">
@@ -397,6 +437,14 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body py-4">
+                    <!-- Policy Clarification Alert -->
+                    <div class="alert alert-info py-2.5 px-3 small rounded-3 mb-3 border-0 d-flex align-items-center gap-2.5 bg-info-subtle text-dark">
+                        <i class="fa-solid fa-shield-halved text-info fs-5"></i>
+                        <div>
+                            <strong>គោលការណ៍គណនាសិទ្ធិប្រឡង៖</strong> ប្រព័ន្ធគ្រាន់តែ Alert ជូនដំណឹងអំពីសិស្សប្រឈមប៉ុណ្ណោះ។ ការដកសិទ្ធិប្រឡង ឬបើកសិទ្ធិប្រឡងឡើងវិញ ត្រូវបិទ ឬបើកដោយ Admin ទាំងអស់ (Manual Admin Toggle Only)។
+                        </div>
+                    </div>
+
                     <div class="p-3 bg-light rounded-3 mb-3 d-flex align-items-center justify-content-between">
                         <div>
                             <div class="text-muted small">ឈ្មោះសិស្ស៖</div>
@@ -462,6 +510,12 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body py-4">
+                    <div class="alert alert-info py-2 px-3 small rounded-3 mb-3 border-0 d-flex align-items-center gap-2 bg-info-subtle text-dark">
+                        <i class="fa-solid fa-shield-halved text-info fs-5"></i>
+                        <div>
+                            <strong>គោលការណ៍គណនាសិទ្ធិប្រឡង៖</strong> ការសម្រេចដកសិទ្ធិប្រឡងជាក្រុម ត្រូវបិទ ឬបើកដោយផ្ទាល់ដោយ Admin ទាំងអស់។
+                        </div>
+                    </div>
                     <div class="alert alert-warning border-0 small rounded-3 mb-3">
                         <i class="fa-solid fa-triangle-exclamation me-1"></i>
                         លោកអ្នកកំពុងរៀបចំដកសិទ្ធិសិស្សចំនួន <strong id="batchModalCount">0</strong> នាក់មិនឱ្យចូលរួមការប្រឡង។

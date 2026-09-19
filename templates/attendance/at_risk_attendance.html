@@ -108,6 +108,26 @@
     </div>
 </div>
 
+<!-- Policy Clarification Alert Banner -->
+<div class="alert alert-info border-0 rounded-4 shadow-sm p-3 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3 bg-info-subtle text-dark">
+    <div class="d-flex align-items-center gap-3">
+        <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center shadow-xs" style="width: 42px; height: 42px; flex-shrink: 0;">
+            <i class="fa-solid fa-shield-halved fs-5"></i>
+        </div>
+        <div>
+            <div class="fw-bold fs-6">គោលការណ៍គណនាសិទ្ធិប្រឡង (Exam Eligibility & Suspension)</div>
+            <div class="small text-muted mt-0.5">
+                ប្រព័ន្ធគ្រាន់តែ Alert ជូនដំណឹងបញ្ជាក់ប្រាប់ Admin អំពីសិស្សដែលមានអវត្តមានច្រើន។ ចំពោះការដកសិទ្ធិប្រឡង (Exam Suspension) គឺត្រូវបិទ ឬបើកដោយផ្ទាល់ដោយ Admin ទាំងអស់ (គ្មានការដកសិទ្ធិស្វ័យប្រវត្តិ)។
+            </div>
+        </div>
+    </div>
+    {% if is_admin %}
+    <a href="{% url 'exam_exclusions_manage' %}" class="btn btn-outline-primary btn-sm fw-bold">
+        <i class="fa-solid fa-user-slash me-1"></i> បញ្ជីសិស្សលើកលែងប្រឡង
+    </a>
+    {% endif %}
+</div>
+
 <!-- At-Risk Table -->
 <div class="custom-card shadow-sm">
     <div class="table-responsive">
@@ -121,6 +141,7 @@
                     <th>សរុបអវត្តមាន (Total)</th>
                     <th>អត្រាវត្តមាន</th>
                     <th>កម្រិតហានិភ័យ</th>
+                    <th>សិទ្ធិប្រឡង (Exam Status)</th>
                     <th>ព័ត៌មានអាណាព្យាបាល</th>
                     <th class="text-end">ចំណាត់ការបន្ទាន់</th>
                 </tr>
@@ -170,27 +191,58 @@
                         {% endif %}
                     </td>
                     <td>
+                        {% if item.student.is_exam_suspended %}
+                        <span class="badge bg-danger rounded-pill px-2.5 py-1 fw-bold"
+                              {% if is_admin %}role="button" onclick="openAttendanceExamModal({{ item.student.id }}, '{{ item.student.khmer_name|escapejs }}', '{{ item.student.student_id }}', true, '{{ item.student.exam_suspension_reason|default:'UNEXCUSED_ABSENCE' }}', '{{ item.student.exam_suspension_notes|escapejs }}')"{% endif %}
+                              title="{{ item.student.exam_suspension_notes|default:item.student.get_exam_suspension_reason_display }}">
+                            <i class="fa-solid fa-ban me-1"></i> ដកសិទ្ធិប្រឡង
+                        </span>
+                        <div class="text-danger small mt-0.5" style="font-size: 0.72rem;">{{ item.student.get_exam_suspension_reason_display }}</div>
+                        {% else %}
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-bold"
+                              {% if is_admin %}role="button" onclick="openAttendanceExamModal({{ item.student.id }}, '{{ item.student.khmer_name|escapejs }}', '{{ item.student.student_id }}', false, 'UNEXCUSED_ABSENCE', 'អវត្តមានឥតច្បាប់ {{ item.absent_days }} ថ្ងៃ ({{ item.absent_times }} វេន)')"{% endif %}>
+                            <i class="fa-solid fa-circle-check me-1"></i> មានសិទ្ធិប្រឡង
+                        </span>
+                        {% if item.absent_times >= 8 %}
+                        <div class="text-danger small fw-bold mt-0.5"><i class="fa-solid fa-triangle-exclamation me-1"></i>ប្រឈមដកសិទ្ធិ</div>
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
                         <div class="small fw-bold">{{ item.student.father_name|default:item.student.mother_name|default:"-" }}</div>
                         <a href="tel:{{ item.student.father_phone|default:item.student.phone }}" class="text-muted small text-decoration-none">
                             <i class="fa-solid fa-phone text-success me-1"></i>{{ item.student.father_phone|default:item.student.phone|default:"-" }}
                         </a>
                     </td>
                     <td class="text-end">
-                        <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ផ្ញើសារក្រើនរំលឹក និងកោះហៅមាតាបិតាសិស្ស {{ item.student.khmer_name }} តាម Telegram មែនទេ?')">
-                            {% csrf_token %}
-                            <input type="hidden" name="send_warning" value="1">
-                            <input type="hidden" name="student_id" value="{{ item.student.id }}">
-                            <input type="hidden" name="absent_days" value="{{ item.absent_days }}">
-                            <input type="hidden" name="absent_times" value="{{ item.absent_times }}">
-                            <button type="submit" class="btn btn-sm btn-danger fw-bold shadow-xs" title="ផ្ញើសារកោះហៅមាតាបិតា">
-                                <i class="fa-brands fa-telegram me-1"></i> កោះហៅមាតាបិតា
+                        <div class="d-inline-flex align-items-center gap-1">
+                            {% if is_admin %}
+                            <button type="button" class="btn btn-sm {% if item.student.is_exam_suspended %}btn-outline-success{% else %}btn-outline-danger{% endif %} fw-bold shadow-xs"
+                                    onclick="openAttendanceExamModal({{ item.student.id }}, '{{ item.student.khmer_name|escapejs }}', '{{ item.student.student_id }}', {{ item.student.is_exam_suspended|yesno:'true,false' }}, '{{ item.student.exam_suspension_reason|default:'UNEXCUSED_ABSENCE' }}', 'អវត្តមានឥតច្បាប់ {{ item.absent_days }} ថ្ងៃ ({{ item.absent_times }} វេន)')"
+                                    title="{% if item.student.is_exam_suspended %}ចុចដើម្បីបើកសិទ្ធិប្រឡងវិញ{% else %}ចុចដើម្បីដកសិទ្ធិប្រឡង{% endif %}">
+                                {% if item.student.is_exam_suspended %}
+                                <i class="fa-solid fa-circle-check me-1"></i> បើកសិទ្ធិ
+                                {% else %}
+                                <i class="fa-solid fa-ban me-1"></i> ដកសិទ្ធិ
+                                {% endif %}
                             </button>
-                        </form>
+                            {% endif %}
+                            <form method="POST" class="d-inline" onsubmit="return confirm('តើលោកអ្នកចង់ផ្ញើសារក្រើនរំលឹក និងកោះហៅមាតាបិតាសិស្ស {{ item.student.khmer_name }} តាម Telegram មែនទេ?')">
+                                {% csrf_token %}
+                                <input type="hidden" name="send_warning" value="1">
+                                <input type="hidden" name="student_id" value="{{ item.student.id }}">
+                                <input type="hidden" name="absent_days" value="{{ item.absent_days }}">
+                                <input type="hidden" name="absent_times" value="{{ item.absent_times }}">
+                                <button type="submit" class="btn btn-sm btn-danger fw-bold shadow-xs" title="ផ្ញើសារកោះហៅមាតាបិតា">
+                                    <i class="fa-brands fa-telegram me-1"></i> កោះហៅមាតាបិតា
+                                </button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center py-5 text-muted">
+                    <td colspan="10" class="text-center py-5 text-muted">
                         <i class="fa-solid fa-circle-check fa-3x text-success mb-3"></i>
                         <h5 class="fw-bold">ល្អប្រសើរណាស់! គ្មានសិស្សណាមានអវត្តមានលើសកម្រិតកំណត់ឡើយ។</h5>
                     </td>
@@ -200,4 +252,109 @@
         </table>
     </div>
 </div>
+
+<!-- Modal: Exam Suspension Setting (Directly from Attendance At-Risk) -->
+{% if is_admin %}
+<div class="modal fade" id="attendanceExamModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <form id="attendanceExamForm" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-danger">
+                        <i class="fa-solid fa-ban me-2"></i>កំណត់ការដកសិទ្ធិប្រឡង (Exam Suspension)
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <!-- Policy Clarification Alert -->
+                    <div class="alert alert-info py-2.5 px-3 small rounded-3 mb-3 border-0 d-flex align-items-center gap-2 bg-info-subtle text-dark">
+                        <i class="fa-solid fa-shield-halved text-info fs-5"></i>
+                        <div>
+                            <strong>គោលការណ៍គណនាសិទ្ធិប្រឡង៖</strong> ប្រព័ន្ធគ្រាន់តែ Alert ជូនដំណឹងអំពីសិស្សប្រឈមប៉ុណ្ណោះ។ ការដកសិទ្ធិប្រឡង ឬបើកសិទ្ធិប្រឡងឡើងវិញ ត្រូវបិទ ឬបើកដោយ Admin ទាំងអស់ (Manual Control Only)។
+                        </div>
+                    </div>
+
+                    <div class="p-3 bg-light rounded-3 mb-3 d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="text-muted small">ឈ្មោះសិស្ស៖</div>
+                            <div class="fw-bold fs-6 text-dark" id="modalStuName">សិស្ស គំរូ</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted small">កូដសិស្ស (ID)៖</div>
+                            <div class="badge bg-primary fs-6" id="modalStuID">STU001</div>
+                        </div>
+                    </div>
+
+                    <!-- Toggle Switch -->
+                    <div class="form-check form-switch p-3 border rounded-3 mb-3 bg-white">
+                        <input class="form-check-input fs-5 ms-0 me-3" type="checkbox" role="switch" id="modalAttIsSuspended" name="is_exam_suspended" onchange="toggleAttReasonField(this.checked)">
+                        <label class="form-check-label fw-bold text-dark" for="modalAttIsSuspended">
+                            ដកចេញពីការប្រឡង (Disqualify / Exclude from Exams)
+                        </label>
+                        <div class="text-muted small mt-1">
+                            នៅពេលបើក សិស្សនេះនឹងមិនត្រូវបានបញ្ចូលក្នុងបន្ទប់ប្រឡង ឬបញ្ជីពិន្ទុឡើយ (ពិន្ទុស្វ័យប្រវត្តិ 0.00)។
+                        </div>
+                    </div>
+
+                    <!-- Reason Dropdown -->
+                    <div id="attReasonContainer" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">មូលហេតុដកសិទ្ធិប្រឡង (Reason)</label>
+                            <select name="exam_suspension_reason" id="modalAttReasonSelect" class="form-select rounded-3">
+                                {% for val, label in exam_reasons %}
+                                <option value="{{ val }}">{{ label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">កំណត់សម្គាល់បន្ថែម / កិច្ចសន្យា (Notes)</label>
+                            <textarea name="exam_suspension_notes" id="modalAttNotesTextarea" class="form-control rounded-3" rows="3" placeholder="បញ្ជាក់ពីមូលហេតុ..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-3" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-danger fw-bold rounded-pill px-4">
+                        <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកការកំណត់
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleAttReasonField(isChecked) {
+    const container = document.getElementById('attReasonContainer');
+    if (container) {
+        container.style.display = isChecked ? 'block' : 'none';
+    }
+}
+
+function openAttendanceExamModal(studentId, studentName, studentCode, isSuspended, reason, notes) {
+    const form = document.getElementById('attendanceExamForm');
+    form.action = `/students/${studentId}/exam-status/`;
+    document.getElementById('modalStuName').textContent = studentName;
+    document.getElementById('modalStuID').textContent = studentCode;
+    
+    const switchInput = document.getElementById('modalAttIsSuspended');
+    switchInput.checked = isSuspended;
+    toggleAttReasonField(isSuspended);
+
+    const reasonSelect = document.getElementById('modalAttReasonSelect');
+    if (reasonSelect && reason) {
+        reasonSelect.value = reason;
+    }
+    const notesArea = document.getElementById('modalAttNotesTextarea');
+    if (notesArea) {
+        notesArea.value = notes || '';
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('attendanceExamModal'));
+    modal.show();
+}
+</script>
+{% endif %}
 {% endblock %}

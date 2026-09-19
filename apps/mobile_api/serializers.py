@@ -51,8 +51,28 @@ class StudentProfileSerializer(serializers.ModelSerializer):
         model = Student
         fields = [
             'id', 'student_id', 'khmer_name', 'latin_name', 'gender', 'gender_display',
-            'date_of_birth', 'classroom_name', 'phone', 'father_name', 'father_phone',
-            'mother_name', 'mother_phone', 'status', 'user_details'
+            'date_of_birth', 'classroom_name', 'phone', 'current_address', 'place_of_birth',
+            'photo', 'photo_drive_url', 'birth_certificate',
+            'father_name', 'father_phone', 'father_job',
+            'mother_name', 'mother_phone', 'mother_job',
+            'guardian_name', 'emergency_phone', 'telegram_chat_id',
+            'status', 'user_details'
+        ]
+
+
+class StudentSelfUpdateSerializer(serializers.ModelSerializer):
+    """
+    Dedicated serializer for students updating their own profile via Mobile API.
+    Strictly forbids modifications to administrative and academic fields.
+    """
+    class Meta:
+        model = Student
+        fields = [
+            'phone', 'current_address', 'place_of_birth',
+            'photo', 'photo_drive_url', 'birth_certificate',
+            'father_name', 'father_phone', 'father_job',
+            'mother_name', 'mother_phone', 'mother_job',
+            'guardian_name', 'emergency_phone', 'telegram_chat_id',
         ]
 
 

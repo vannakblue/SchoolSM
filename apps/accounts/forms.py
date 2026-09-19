@@ -60,14 +60,15 @@ class SchoolProfileForm(forms.ModelForm):
     class Meta:
         model = SchoolProfile
         fields = [
-            'name_kh', 'name_en', 'short_name', 'short_name_en', 'school_code', 'school_type', 'school_type_en', 'institution_type', 'education_levels', 'date_format', 'time_format', 'motto', 'motto_en',
+            'name_kh', 'name_en', 'short_name', 'short_name_en', 'school_code', 'school_type', 'school_type_en', 'institution_type', 'education_levels', 'education_levels_en', 'date_format', 'time_format', 'motto', 'motto_en',
             'about_school', 'about_school_en',
             'student_id_pattern', 'student_id_prefix', 'student_id_custom_template', 'student_id_digits', 'student_id_include_grade',
             'registration_mode',
             'is_registration_open', 'registration_start_date', 'registration_end_date', 'registration_closed_message',
+            'allow_student_self_update', 'student_update_closed_message',
             'logo', 'seal', 'principal_signature',
-            'ministry_name', 'poe_name', 'doe_name',
-            'province', 'district', 'commune', 'village', 'street_address', 'street_address_en',
+            'ministry_name', 'ministry_name_en', 'poe_name', 'poe_name_en', 'doe_name', 'doe_name_en',
+            'province', 'district', 'commune', 'commune_en', 'village', 'village_en', 'street_address', 'street_address_en',
             'latitude', 'longitude', 'google_maps_url', 'gps_radius_meters',
             'principal_name', 'principal_name_en', 'phone', 'email', 'website', 'facebook_page', 'telegram_channel',
             'display_font', 'report_header_font', 'theme_primary_color', 'header_bg_color', 'footer_bg_color', 'body_bg_color',
@@ -82,6 +83,7 @@ class SchoolProfileForm(forms.ModelForm):
             'school_type_en': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. General High School'}),
             'institution_type': forms.Select(attrs={'class': 'form-select'}),
             'education_levels': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. មត្តេយ្យ, បឋមសិក្សា, អនុវិទ្យាល័យ, វិទ្យាល័យ'}),
+            'education_levels_en': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Secondary & High School'}),
             'date_format': forms.Select(attrs={'class': 'form-select fw-bold border-primary'}),
             'time_format': forms.Select(attrs={'class': 'form-select fw-bold border-primary'}),
             'display_font': forms.Select(attrs={'class': 'form-select fw-bold border-primary', 'id': 'id_display_font'}),
@@ -104,19 +106,26 @@ class SchoolProfileForm(forms.ModelForm):
             'registration_start_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local', 'id': 'id_registration_start_date'}),
             'registration_end_date': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local', 'id': 'id_registration_end_date'}),
             'registration_closed_message': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'សារជូនដំណឹងពេលបិទ ឬផុតកំណត់ការចុះឈ្មោះ'}),
+            'allow_student_self_update': forms.CheckboxInput(attrs={'class': 'form-check-input', 'id': 'id_allow_student_self_update'}),
+            'student_update_closed_message': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'សារជូនដំណឹងពេលបិទការកែប្រែព័ត៌មានសិស្ស'}),
             
             'logo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'id': 'id_logo'}),
             'seal': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'id': 'id_seal'}),
             'principal_signature': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*', 'id': 'id_principal_signature'}),
 
             'ministry_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'ministry_name_en': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Ministry of Education, Youth and Sport'}),
             'poe_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'poe_name_en': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Provincial Department of Education'}),
             'doe_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'doe_name_en': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. District Office of Education'}),
 
             'province': forms.TextInput(attrs={'class': 'form-control', 'id': 'input_province', 'placeholder': 'ឧ. ខេត្តកណ្ដាល'}),
             'district': forms.TextInput(attrs={'class': 'form-control', 'id': 'input_district', 'placeholder': 'ឧ. ស្រុកកណ្ដាលស្ទឹង'}),
             'commune': forms.TextInput(attrs={'class': 'form-control', 'id': 'input_commune', 'placeholder': 'ឧ. ឃុំបារគូ'}),
+            'commune_en': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Barkou Commune'}),
             'village': forms.TextInput(attrs={'class': 'form-control', 'id': 'input_village', 'placeholder': 'ឧ. ភូមិស្វាយមីង'}),
+            'village_en': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g. Svay Ming Village'}),
             'street_address': forms.TextInput(attrs={'class': 'form-control', 'id': 'input_street_address', 'placeholder': 'ឧ. ផ្លូវលេខ២០៤ ភូមិស្វាយមីង ឃុំបារគូ'}),
             'street_address_en': forms.TextInput(attrs={'class': 'form-control', 'id': 'input_street_address_en', 'placeholder': 'e.g. Street 204, Svay Ming Village, Barkou Commune'}),
 

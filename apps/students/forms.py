@@ -1022,3 +1022,39 @@ class GradeVerificationFormConfigForm(forms.ModelForm):
         }
 
 
+class StudentSelfUpdateForm(forms.ModelForm):
+    """
+    Dedicated secure form for students to update their own biographical,
+    contact, and parental/guardian details.
+    Strictly excludes all administrative and academic fields:
+    student_id, classroom, academic_year, status, scholarship_type,
+    is_exam_suspended, enrollment_date, etc.
+    """
+    class Meta:
+        model = Student
+        fields = [
+            'phone', 'current_address', 'place_of_birth',
+            'photo', 'photo_drive_url', 'birth_certificate',
+            'father_name', 'father_phone', 'father_job',
+            'mother_name', 'mother_phone', 'mother_job',
+            'guardian_name', 'emergency_phone', 'telegram_chat_id',
+        ]
+        widgets = {
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. 012 345 678'}),
+            'current_address': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'អាសយដ្ឋានបច្ចុប្បន្ន (ភូមិ ឃុំ/សង្កាត់ ស្រុក/ខណ្ឌ ខេត្ត/រាជធានី)...'}),
+            'place_of_birth': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ទីកន្លែងកំណើត...'}),
+            'photo': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+            'photo_drive_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'https://drive.google.com/...'}),
+            'birth_certificate': forms.FileInput(attrs={'class': 'form-control'}),
+            'father_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឈ្មោះឪពុក'}),
+            'father_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'លេខទូរស័ព្ទឪពុក'}),
+            'father_job': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'មុខរបរឪពុក'}),
+            'mother_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឈ្មោះម្តាយ'}),
+            'mother_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'លេខទូរស័ព្ទម្តាយ'}),
+            'mother_job': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'មុខរបរម្តាយ'}),
+            'guardian_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឈ្មោះអាណាព្យាបាលជំនួស (បើមាន)'}),
+            'emergency_phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'លេខទូរស័ព្ទបន្ទាន់'}),
+            'telegram_chat_id': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Telegram Chat ID (ស្រេចចិត្ត)'}),
+        }
+
+

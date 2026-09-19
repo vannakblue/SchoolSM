@@ -332,11 +332,20 @@
             border-top-color: #1e3a8a !important;
         }
 
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 100px;
+        }
+
         body {
             font-family: {{ school_profile.display_font_css|safe }}, 'Plus Jakarta Sans', sans-serif;
             background-color: var(--light-bg);
             color: #334155;
             overflow-x: hidden;
+        }
+
+        section[id], div[id], [id] {
+            scroll-margin-top: 100px !important;
         }
 
         h1, h2, h3, .section-title, .hero-section h1 {
@@ -467,16 +476,50 @@
             top: 0;
             z-index: 1020;
         }
-        .nav-link {
-            font-weight: 500;
+        .web-navbar .nav-link {
+            font-weight: 600;
+            font-size: 0.88rem;
             color: #1e293b !important;
-            padding: 0.6rem 1rem !important;
+            padding: 0.45rem 0.75rem !important;
             border-radius: 8px;
             transition: all 0.2s ease;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
         }
-        .nav-link:hover, .nav-link.active {
+        .web-navbar .nav-link:hover, 
+        .web-navbar .nav-link.active {
             color: var(--primary-color) !important;
             background-color: rgba(37, 99, 235, 0.08);
+        }
+        .web-navbar .dropdown-toggle::after {
+            margin-left: 0.35rem;
+            vertical-align: 0.15em;
+        }
+        @media (min-width: 992px) {
+            .web-navbar .dropdown:hover > .dropdown-menu {
+                display: block;
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }
+            .web-navbar .dropdown-menu {
+                display: block;
+                opacity: 0;
+                visibility: hidden;
+                transform: translateY(6px);
+                transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+            }
+        }
+        @media (max-width: 991.98px) {
+            .web-navbar .dropdown-menu {
+                border: none !important;
+                box-shadow: none !important;
+                background-color: rgba(241, 245, 249, 0.85) !important;
+                padding-left: 0.85rem !important;
+                margin: 0.25rem 0 !important;
+                border-radius: 10px !important;
+            }
         }
 
         /* Glowing Portal CTA Button */
@@ -484,14 +527,19 @@
             background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
             color: #ffffff !important;
             font-weight: 600;
-            padding: 0.55rem 1.35rem;
+            font-size: 0.88rem;
+            padding: 0.48rem 1.25rem;
             border-radius: 30px;
             border: none;
             box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
             transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.5rem;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            text-decoration: none;
         }
         .btn-portal-login:hover {
             transform: translateY(-2px);
@@ -503,14 +551,19 @@
             background: linear-gradient(135deg, #059669 0%, #10b981 100%);
             color: #ffffff !important;
             font-weight: 600;
-            padding: 0.55rem 1.35rem;
+            font-size: 0.88rem;
+            padding: 0.48rem 1.25rem;
             border-radius: 30px;
             border: none;
             box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
             transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.5rem;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            text-decoration: none;
         }
         .btn-portal-dashboard:hover {
             transform: translateY(-2px);
@@ -665,7 +718,7 @@
 
     <!-- 1. Top Utility Bar with Bilingual Language Switcher -->
     <div class="topbar-utility py-2 d-none d-md-block">
-        <div class="container d-flex justify-content-between align-items-center">
+        <div class="container-fluid px-3 px-lg-4 px-xl-5 d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-4">
                 <span>
                     <i class="fa-solid fa-phone text-warning me-1"></i>
@@ -741,21 +794,21 @@
 
     <!-- 2. Main Navigation Bar -->
     <nav class="navbar navbar-expand-lg web-navbar sticky-top py-2">
-        <div class="container">
+        <div class="container-fluid px-3 px-lg-4 px-xl-5">
             <!-- Brand Logo & School Title -->
-            <a class="navbar-brand d-flex align-items-center gap-2" href="{% url 'website_home' %}">
+            <a class="navbar-brand d-flex align-items-center gap-2 me-2 me-xl-4 flex-shrink-0" href="{% url 'website_home' %}">
                 {% if school_profile and school_profile.logo_url %}
-                <img src="{{ school_profile.logo_url }}" alt="Logo" class="rounded-circle shadow-sm" style="width: 48px; height: 48px; object-fit: cover;" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
+                <img src="{{ school_profile.logo_url }}" alt="Logo" class="rounded-circle shadow-sm flex-shrink-0" style="width: 44px; height: 44px; object-fit: cover;" onerror="this.onerror=null; this.src='{% static 'img/school_logo.png' %}';">
                 {% else %}
-                <img src="{% static 'img/school_logo.png' %}" alt="Logo" class="rounded-circle shadow-sm" style="width: 48px; height: 48px; object-fit: cover;">
+                <img src="{% static 'img/school_logo.png' %}" alt="Logo" class="rounded-circle shadow-sm flex-shrink-0" style="width: 44px; height: 44px; object-fit: cover;">
                 {% endif %}
-                <div class="d-flex flex-column">
+                <div class="d-flex flex-column" style="max-width: 250px;">
                     {% if is_english %}
-                        <span class="fw-bold text-dark fs-5 lh-1">{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}</span>
-                        <span class="text-muted small fw-semibold" style="font-size: 0.75rem; letter-spacing: 0.3px;">{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</span>
+                        <span class="fw-bold text-dark fs-6 lh-sm text-truncate">{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}</span>
+                        <span class="text-muted small fw-semibold" style="font-size: 0.72rem; letter-spacing: 0.3px;">{{ school_profile.school_type_en|default:"General High School" }}</span>
                     {% else %}
-                        <span class="fw-bold text-dark fs-5 lh-1">{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</span>
-                        <span class="text-muted small fw-semibold" style="font-size: 0.75rem; letter-spacing: 0.3px;">{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}</span>
+                        <span class="fw-bold text-dark fs-6 lh-sm text-truncate">{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</span>
+                        <span class="text-muted small fw-semibold" style="font-size: 0.72rem; letter-spacing: 0.3px;">{{ school_profile.school_type|default:"វិទ្យាល័យចំណេះទូទៅ" }}</span>
                     {% endif %}
                 </div>
             </a>
@@ -809,15 +862,28 @@
                             <i class="fa-solid fa-book-open-reader me-1 text-primary"></i>{% lang_switch 'កម្មវិធីសិក្សា' 'Academics' %}
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if active_nav == 'announcements' %}active{% endif %}" href="{% url 'website_announcement_list' %}">
-                            <i class="fa-solid fa-bullhorn me-1 text-warning"></i>{% lang_switch 'សេចក្តីជូនដំណឹង' 'Announcements' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if active_nav == 'announcements' or active_nav == 'news' %}active{% endif %}" href="#" id="navbarNewsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fa-solid fa-bullhorn me-1 text-warning"></i>{% lang_switch 'ព័ត៌មាន & ដំណឹង' 'News & Updates' %}
                         </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if active_nav == 'news' %}active{% endif %}" href="{% url 'website_news_list' %}">
-                            <i class="fa-solid fa-newspaper me-1 text-info"></i>{% lang_switch 'ព័ត៌មានថ្មីៗ' 'News' %}
-                        </a>
+                        <ul class="dropdown-menu shadow border-0 py-2" aria-labelledby="navbarNewsDropdown">
+                            <li>
+                                <a class="dropdown-item {% if active_nav == 'announcements' %}active{% endif %}" href="{% url 'website_announcement_list' %}">
+                                    <span class="d-flex align-items-center gap-2">
+                                        <i class="fa-solid fa-bullhorn text-warning"></i>
+                                        <span>{% lang_switch 'សេចក្តីជូនដំណឹង' 'Announcements' %}</span>
+                                    </span>
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if active_nav == 'news' %}active{% endif %}" href="{% url 'website_news_list' %}">
+                                    <span class="d-flex align-items-center gap-2">
+                                        <i class="fa-solid fa-newspaper text-info"></i>
+                                        <span>{% lang_switch 'ព័ត៌មានថ្មីៗ' 'Latest News' %}</span>
+                                    </span>
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if active_nav == 'gallery' %}active{% endif %}" href="{% url 'website_gallery_list' %}">
@@ -836,45 +902,17 @@
                     </li>
                 </ul>
 
-                <!-- Portal Action Buttons + Navbar Language Switcher -->
+                <!-- Portal Action Buttons -->
                 <div class="d-flex align-items-center gap-2 mt-3 mt-lg-0">
-                    <!-- Desktop Navbar Language Switcher -->
-                    <div class="dropdown d-none d-lg-block position-relative me-1">
-                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-1.5 shadow-none" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="font-size: 0.83rem;">
-                            <span>{{ current_language_flag|default:"🇰🇭" }}</span>
-                            <span>{{ current_language_name|default:"ភាសាខ្មែរ" }}</span>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-1">
-                            <li>
-                                <a class="dropdown-item {% if is_khmer %}active{% endif %}" href="{% url 'set_language_preference' %}?lang=km&next={{ request.get_full_path|urlencode }}" onclick="switchLangImmediate('km')">
-                                    <span>🇰🇭 ភាសាខ្មែរ (Khmer)</span>
-                                    {% if is_khmer %}<i class="fa-solid fa-circle-check check-icon ms-2"></i>{% endif %}
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {% if is_english %}active{% endif %}" href="{% url 'set_language_preference' %}?lang=en&next={{ request.get_full_path|urlencode }}" onclick="switchLangImmediate('en')">
-                                    <span>🇬🇧 English (EN)</span>
-                                    {% if is_english %}<i class="fa-solid fa-circle-check check-icon ms-2"></i>{% endif %}
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <!-- Desktop Navbar Theme Toggle -->
-                    <button class="btn-theme-nav d-none d-lg-inline-flex me-1" type="button" id="navThemeToggle" onclick="toggleAppTheme()" title="{% lang_switch 'ប្តូរ Theme (Light / Dark)' 'Toggle Theme (Light / Dark)' %}" aria-label="Toggle theme">
-                        <i class="fa-solid fa-moon theme-icon-moon"></i>
-                        <i class="fa-solid fa-sun theme-icon-sun"></i>
-                    </button>
-
                     {% if user.is_authenticated %}
                         <a href="{% url 'dashboard_redirect' %}" class="btn-portal-dashboard">
                             <i class="fa-solid fa-gauge-high"></i>
-                            <span>{% lang_switch 'ផ្ទាំងគ្រប់គ្រង (Dashboard)' 'Dashboard' %}</span>
+                            <span>{% lang_switch 'ផ្ទាំងគ្រប់គ្រង' 'Dashboard' %}</span>
                         </a>
                     {% else %}
                         <a href="{% url 'login' %}" class="btn-portal-login">
                             <i class="fa-solid fa-right-to-bracket"></i>
-                            <span>{% lang_switch 'ចូលប្រព័ន្ធ (Portal Login)' 'Portal Login' %}</span>
+                            <span>{% lang_switch 'ចូលប្រព័ន្ធ' 'Portal Login' %}</span>
                         </a>
                     {% endif %}
                 </div>
@@ -914,10 +952,10 @@
                         <div>
                             {% if is_english %}
                                 <h5 class="mb-0 text-white">{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}</h5>
-                                <small class="text-light-50">{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</small>
+                                <small class="text-light-50">{{ school_profile.school_type_en|default:"General High School" }}</small>
                             {% else %}
                                 <h5 class="mb-0 text-white">{{ school_profile.name_kh|default:"វិទ្យាល័យ ហ៊ុន សែន កំពង់កន្ទួត" }}</h5>
-                                <small class="text-light-50">{{ school_profile.name_en|default:"Hun Sen Kampong Kantuot High School" }}</small>
+                                <small class="text-light-50">{{ school_profile.school_type|default:"វិទ្យាល័យចំណេះទូទៅ" }}</small>
                             {% endif %}
                         </div>
                     </div>
@@ -929,7 +967,7 @@
                         {% endif %}
                     </p>
                     <div class="small text-secondary">
-                        <p class="mb-1"><i class="fa-solid fa-school text-primary me-2"></i>{% lang_switch "កម្រិត៖" "Level:" %} {{ school_profile.education_levels|default:"មត្តេយ្យ, បឋម, អនុវិទ្យាល័យ, វិទ្យាល័យ" }}</p>
+                        <p class="mb-1"><i class="fa-solid fa-school text-primary me-2"></i>{% lang_switch "កម្រិត៖" "Level:" %} {% if is_english %}{{ school_profile.education_levels_en|default:"Secondary & High School" }}{% else %}{{ school_profile.education_levels|default:"អនុវិទ្យាល័យ, វិទ្យាល័យ" }}{% endif %}</p>
                         <p class="mb-1"><i class="fa-solid fa-shield-halved text-info me-2"></i>{% lang_switch "កូដសាលា MoEYS៖" "MoEYS Code:" %} <code>{{ school_profile.school_code|default:"08010306901" }}</code></p>
                     </div>
                 </div>
@@ -951,10 +989,10 @@
                 <div class="col-lg-3 col-md-6">
                     <h5>{% lang_switch "អង្គភាពគ្រប់គ្រង" "Administration" %}</h5>
                     <ul class="list-unstyled small d-flex flex-column gap-2">
-                        <li><i class="fa-solid fa-building-columns text-warning me-2"></i>{% lang_switch school_profile.ministry_name "Ministry of Education, Youth and Sport" %}</li>
-                        <li><i class="fa-solid fa-landmark text-info me-2"></i>{% lang_switch school_profile.poe_name "Provincial Department of Education" %}</li>
+                        <li><i class="fa-solid fa-building-columns text-warning me-2"></i>{% lang_switch school_profile.ministry_name school_profile.ministry_name_en|default:"Ministry of Education, Youth and Sport" %}</li>
+                        <li><i class="fa-solid fa-landmark text-info me-2"></i>{% lang_switch school_profile.poe_name school_profile.poe_name_en|default:"Kandal Provincial Department of Education" %}</li>
                         {% if school_profile.doe_name %}
-                        <li><i class="fa-solid fa-city text-secondary me-2"></i>{{ school_profile.doe_name }}</li>
+                        <li><i class="fa-solid fa-city text-secondary me-2"></i>{% lang_switch school_profile.doe_name school_profile.doe_name_en|default:"Kandal Stueng District Office of Education" %}</li>
                         {% endif %}
                         <li><i class="fa-solid fa-user-tie text-success me-2"></i>{% lang_switch "នាយកសាលា៖" "Principal:" %} {% if is_english %}{{ school_profile.principal_name_en|default:school_profile.principal_name|default:"Mr. Theng Rithya" }}{% else %}{{ school_profile.principal_name|default:"លោក ថេង រិទ្ធីយ៉ា" }}{% endif %}</li>
                         <li class="mt-2">
@@ -1030,6 +1068,37 @@
                     bootstrap.Dropdown.getOrCreateInstance(dropdownToggleEl);
                 }
             });
+        });
+
+        // Smooth in-page anchor scrolling with sticky navbar offset
+        document.addEventListener('click', function (e) {
+            const anchor = e.target.closest('a[href*="#"]');
+            if (!anchor) return;
+            const href = anchor.getAttribute('href');
+            if (!href || href === '#') return;
+
+            const hashIndex = href.indexOf('#');
+            if (hashIndex === -1) return;
+            const hash = href.substring(hashIndex);
+            if (!hash || hash === '#') return;
+
+            const path = href.substring(0, hashIndex);
+            const currentPath = window.location.pathname;
+            const isSamePage = !path || path === currentPath || (path === '/' && (currentPath === '/' || currentPath === ''));
+
+            if (isSamePage) {
+                try {
+                    const target = document.querySelector(hash);
+                    if (target) {
+                        e.preventDefault();
+                        const nav = document.querySelector('.web-navbar');
+                        const navHeight = nav ? nav.offsetHeight : 75;
+                        const targetTop = target.getBoundingClientRect().top + window.pageYOffset - (navHeight + 25);
+                        window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+                        history.pushState(null, null, hash);
+                    }
+                } catch (err) {}
+            }
         });
 
         // Instant client-side cookie writer for language switching

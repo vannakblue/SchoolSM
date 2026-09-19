@@ -85,7 +85,7 @@ def book_return(request, pk):
 # ----------------- INVENTORY MODULE -----------------
 
 @login_required
-@role_required(['ADMIN', 'ACCOUNTANT'])
+@role_required(['ADMIN'])
 def inventory_list(request):
     items = InventoryItem.objects.all()
     category_filter = request.GET.get('category', '')
@@ -115,7 +115,7 @@ def inventory_list(request):
 
 
 @login_required
-@role_required(['ADMIN', 'ACCOUNTANT'])
+@role_required(['ADMIN'])
 def inventory_transaction_create(request):
     if request.method == 'POST':
         form = InventoryTransactionForm(request.POST)

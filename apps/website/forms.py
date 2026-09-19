@@ -23,10 +23,12 @@ class NewsArticleForm(forms.ModelForm):
 class GalleryAlbumForm(forms.ModelForm):
     class Meta:
         model = GalleryAlbum
-        fields = ['title', 'description', 'cover_image', 'event_date', 'is_published']
+        fields = ['title', 'title_en', 'description', 'description_en', 'cover_image', 'event_date', 'is_published']
         widgets = {
-            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ទិវាគ្រូបង្រៀន ឬ ការប្រកួតកីឡាសាលា...'}),
-            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'ពិពណ៌នាអំពីព្រឹត្តិការណ៍នេះ...'}),
+            'title': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ឧ. ការប្រកួតកីឡាបាល់ទាត់ប្រចាំឆ្នាំ (Khmer)...'}),
+            'title_en': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'English album title (or leave blank to auto-translate by AI)...'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'ពិពណ៌នាអំពីព្រឹត្តិការណ៍នេះ (Khmer)...'}),
+            'description_en': forms.Textarea(attrs={'class': 'form-control', 'rows': 2, 'placeholder': 'English description (or leave blank to auto-translate by AI)...'}),
             'cover_image': forms.FileInput(attrs={'class': 'form-control'}),
             'event_date': forms.DateInput(attrs={'class': 'form-control', 'type': 'date'}),
             'is_published': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
@@ -85,3 +87,14 @@ class ContactMessageForm(forms.ModelForm):
             'subject': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'ប្រធានបទសាកសួរ *', 'required': 'true'}),
             'message': forms.Textarea(attrs={'class': 'form-control', 'rows': 4, 'placeholder': 'សរសេរខ្លឹមសារសំណួរ ឬសាររបស់លោកអ្នកនៅទីនេះ... *', 'required': 'true'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        is_english = kwargs.pop('is_english', False)
+        super().__init__(*args, **kwargs)
+        if is_english:
+            self.fields['name'].widget.attrs['placeholder'] = 'Your Full Name *'
+            self.fields['phone'].widget.attrs['placeholder'] = 'Your Contact Phone Number *'
+            self.fields['email'].widget.attrs['placeholder'] = 'Email Address (Optional)'
+            self.fields['subject'].widget.attrs['placeholder'] = 'Subject of Inquiry *'
+            self.fields['message'].widget.attrs['placeholder'] = 'Write your question or message here... *'
+

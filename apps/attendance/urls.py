@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 from . import views
 from apps.teachers import views as teacher_views
 
@@ -7,6 +7,9 @@ urlpatterns = [
     path('report/', views.attendance_report, name='attendance_report'),
     path('teacher-report/', teacher_views.teacher_attendance_report, name='teacher_attendance_report_alias'),
     path('at-risk/', views.at_risk_attendance_view, name='at_risk_attendance'),
+    path('at_risk/', views.at_risk_attendance_view),
+    path('at risk/', views.at_risk_attendance_view),
+    re_path(r'^at(?:\s|_|%20|-)+risk/?$', views.at_risk_attendance_view),
     path('admin-hub/', views.attendance_admin_hub, name='attendance_admin_hub'),
     path('admin_hub/', views.attendance_admin_hub),
     path('admin-hub/restriction/<int:pk>/delete/', views.delete_calendar_restriction_view, name='delete_calendar_restriction'),

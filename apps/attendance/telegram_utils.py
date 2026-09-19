@@ -1,3 +1,4 @@
+import re
 import logging
 from datetime import datetime, date
 from django.db.models import Count, Q
@@ -10,20 +11,176 @@ from apps.teachers.utils import get_teacher_daily_attendance_data
 
 logger = logging.getLogger(__name__)
 
+
+def to_khmer_numeral(num):
+    """
+    Converts numbers or digit strings into Khmer numerals (0-9 -> ០-៩).
+    E.g. 1 -> '១', 3 -> '៣', 10 -> '១០'.
+    """
+    if num is None:
+        return ""
+    khmer_digits = {
+        '0': '០', '1': '១', '2': '២', '3': '៣', '4': '៤',
+        '5': '៥', '6': '៦', '7': '៧', '8': '៨', '9': '៩'
+    }
+    return ''.join(khmer_digits.get(c, c) for c in str(num))
+
+
+def natural_classroom_sort_key(cls):
+    """
+    Strict natural sort key for ordering classrooms sequentially:
+    7A, 7B, 7C, 7D, 8A, 8B, 8C, ..., 12A, 12B, ...
+    Accepts a Classroom instance or a string code/name.
+    """
+    grade = getattr(cls, 'grade_level', None)
+    raw = getattr(cls, 'clean_code', None) or getattr(cls, 'code', None) or getattr(cls, 'name', None) or str(cls)
+    c_str = str(raw).strip()
+
+    # Strip common Khmer classroom prefixes
+    for pfx in ['ថ្នាក់ទី', 'ថ្នាក់ ទី', 'ថ្នាក់', 'ថ្នាក់ ']:
+        if c_str.startswith(pfx):
+            c_str = c_str[len(pfx):].strip()
+
+    # Extract leading grade number if grade_level is not already set or 0
+    m = re.search(r'(\d+)', c_str)
+    if (grade is None or grade == 0) and m:
+        grade = int(m.group(1))
+    elif grade is None:
+        grade = 999
+
+    # Split remaining into numeric chunks and uppercase strings for natural collation
+    chunks = [int(t) if t.isdigit() else t.upper() for t in re.split(r'(\d+)', c_str) if t]
+    return (grade, chunks, getattr(cls, 'id', 0))
+
+
+def sort_khmer_attendance_records(records):
+    """
+    Sorts attendance records alphabetically by Khmer name from ក to អ (U+1780 to U+17A2).
+    If Khmer names match, secondary sort is by student ID.
+    """
+    def _sort_key(r):
+        student = getattr(r, 'student', None)
+        if not student:
+            return ("", "")
+        k_name = (student.khmer_name or (student.user.get_full_name() if getattr(student, 'user', None) else '') or '').strip()
+        sid = str(getattr(student, 'student_id', '') or '')
+        return (k_name, sid)
+
+    return sorted(records, key=_sort_key)
+
+
+def format_student_absence_telegram_message(classroom, target_date, session='MORNING', period_number=None, records=None, teacher_name=None, footer_text=None):
+    """
+    Builds the official Telegram student absence notification format:
+
+    ⚠️ ការជូនដំណឹងអវត្តមានសិស្ស
+    📅 ថ្ងៃទី៖ 01/08/2026
+    ⏰ ម៉ោងទី៖ ទី៣ (ព្រឹក)
+    🏫 ថ្នាក់រៀន៖ 7D
+    👤 ឈ្មោះគ្រូ៖ ចេង បុណ្ណាវុធ
+
+    បញ្ជីសិស្សអវត្តមាន៖
+    ១. 26343-គឹមលី ស្រីណែត  (ឥតច្បាប់)
+    ២. 26354-ចាន់ថា លីហ្សា   (ឥតច្បាប់)
+    ...
+    ៦. 26540-ពិសិដ្ឋ វិសុត 🟡 (ច្បាប់)
+
+    ℹ️ សូមគ្រូបន្ទុកថ្នាក់ជ្រាបជាព័ត៌មាន។
+    """
+    if isinstance(target_date, (datetime, date)):
+        date_str = target_date.strftime('%d/%m/%Y')
+    else:
+        date_str = str(target_date)
+
+    p_num_int = int(period_number) if period_number and str(period_number).isdigit() else None
+    if session == 'AFTERNOON':
+        session_label = "រសៀល"
+    elif session == 'MORNING':
+        session_label = "ព្រឹក"
+    else:
+        session_label = "រសៀល" if (p_num_int and p_num_int > 4) else "ព្រឹក"
+
+    if p_num_int:
+        period_text = f"ទី{to_khmer_numeral(p_num_int)} ({session_label})"
+    else:
+        period_text = f"ពេល{session_label}"
+
+    # Classroom display code
+    class_display = getattr(classroom, 'clean_code', None) or getattr(classroom, 'code', None) or getattr(classroom, 'name', '')
+    for pfx in ['ថ្នាក់ទី', 'ថ្នាក់ ទី', 'ថ្នាក់', 'ថ្នាក់ ']:
+        if class_display.startswith(pfx):
+            class_display = class_display[len(pfx):].strip()
+
+    # Teacher display name
+    if not teacher_name:
+        first_rec = records[0] if records else None
+        if first_rec and getattr(first_rec, 'recorded_by', None):
+            teacher_name = first_rec.recorded_by.display_name or first_rec.recorded_by.get_full_name()
+        elif getattr(classroom, 'homeroom_teacher', None):
+            teacher_name = classroom.homeroom_teacher.display_name or classroom.homeroom_teacher.khmer_name
+        else:
+            teacher_name = "មិនបានបញ្ជាក់"
+
+    msg_lines = [
+        "⚠️ ការជូនដំណឹងអវត្តមានសិស្ស",
+        f"📅 ថ្ងៃទី៖ {date_str}",
+        f"⏰ ម៉ោងទី៖ {period_text}",
+        f"🏫 ថ្នាក់រៀន៖ {class_display}",
+        f"👤 ឈ្មោះគ្រូ៖ {teacher_name}",
+        "",
+        "បញ្ជីសិស្សអវត្តមាន៖",
+    ]
+
+    absent_records = []
+    if records:
+        absent_records = [
+            r for r in records
+            if r.status in [StudentAttendance.Status.ABSENT, StudentAttendance.Status.PERMISSION, StudentAttendance.Status.LATE]
+        ]
+
+    if not absent_records:
+        msg_lines.append("🎉 គ្មានសិស្សអវត្តមានទេ (វត្តមាន ១០០%)")
+    else:
+        # Sort alphabetically from ក to អ
+        sorted_records = sort_khmer_attendance_records(absent_records)
+        for idx, r in enumerate(sorted_records, 1):
+            kh_idx = to_khmer_numeral(idx)
+            sid = f"{r.student.student_id}-" if getattr(r.student, 'student_id', None) else ""
+            sname = (r.student.khmer_name or (r.student.user.get_full_name() if getattr(r.student, 'user', None) else "") or "").strip()
+
+            if r.status == StudentAttendance.Status.ABSENT:
+                tag = f"  (ឥតច្បាប់ - {r.notes})" if r.notes else "  (ឥតច្បាប់)"
+            elif r.status == StudentAttendance.Status.PERMISSION:
+                tag = f" 🟡 (ច្បាប់ - {r.notes})" if r.notes else " 🟡 (ច្បាប់)"
+            elif r.status == StudentAttendance.Status.LATE:
+                tag = f" ⏰ (មកយឺត - {r.notes})" if r.notes else " ⏰ (មកយឺត)"
+            else:
+                tag = ""
+            msg_lines.append(f"{kh_idx}. {sid}{sname}{tag}")
+
+    msg_lines.append("")
+    msg_lines.append(footer_text or "ℹ️ សូមគ្រូបន្ទុកថ្នាក់ជ្រាបជាព័ត៌មាន។")
+
+    return "\n".join(msg_lines)
+
+
 def send_classroom_attendance_telegram(classroom, target_date, session='MORNING', period_number=None, custom_chat_id=None, sender_user=None):
     """
-    Formats and sends the student attendance report for a specific classroom and period/session to Telegram.
-    Student names are sorted alphabetically by Khmer name.
-    Target chat: custom_chat_id or classroom.telegram_chat_id or default TelegramConfig.chat_id.
+    Formats and sends the student absence notification for a specific classroom and period/session to Telegram.
+    Student absence list is sorted alphabetically in Khmer order from ក to អ with Khmer numbering.
+    Dispatches to:
+    1. custom_chat_id or classroom.telegram_chat_id or TelegramConfig.chat_id
+    2. Group គ្រូបន្ទុកថ្នាក់ (settings.homeroom_group_chat_id)
+    3. Custom dispatch groups (settings.custom_dispatch_groups)
     """
     config = TelegramConfig.objects.first()
     settings = AttendanceSetting.get_settings()
-    
-    target_chat_id = custom_chat_id or classroom.telegram_chat_id or (config.chat_id if config else None)
-    if not target_chat_id:
+
+    primary_chat_id = custom_chat_id or classroom.telegram_chat_id or (config.chat_id if config else None)
+    if not primary_chat_id and not settings.homeroom_group_chat_id:
         return {
             'success': False,
-            'message': f'ពុំទាន់មាន Telegram Chat ID សម្រាប់ថ្នាក់ {classroom.name} ឬប្រព័ន្ធរួមនៅឡើយទេ។ សូមកំណត់ Chat ID ជាមុនសិន!'
+            'message': f'ពុំទាន់មាន Telegram Chat ID សម្រាប់ថ្នាក់ {classroom.name} ឬ Group គ្រូបន្ទុកថ្នាក់នៅឡើយទេ។ សូមកំណត់ Chat ID ជាមុនសិន!'
         }
 
     # Fetch attendance records
@@ -37,87 +194,73 @@ def send_classroom_attendance_telegram(classroom, target_date, session='MORNING'
         atts_qs = atts_qs.filter(period_number=period_number)
 
     records = list(atts_qs)
-    total_students = classroom.total_students or len(records)
-    
-    # Sort students alphabetically by khmer_name
-    absent_list = sorted([r for r in records if r.status == StudentAttendance.Status.ABSENT], key=lambda r: (r.student.khmer_name, r.student.student_id))
-    permission_list = sorted([r for r in records if r.status == StudentAttendance.Status.PERMISSION], key=lambda r: (r.student.khmer_name, r.student.student_id))
-    late_list = sorted([r for r in records if r.status == StudentAttendance.Status.LATE], key=lambda r: (r.student.khmer_name, r.student.student_id))
-    present_count = total_students - len(absent_list) - len(permission_list)
 
-    date_str = target_date.strftime('%d/%m/%Y')
-    session_str = "ពេលព្រឹក (Morning)" if session == 'MORNING' else "ពេលរសៀល (Afternoon)"
-    period_str = f" • ម៉ោងទី {period_number}" if period_number else ""
-
-    # Subject and Teacher info
     first_rec = records[0] if records else None
-    subject_name = first_rec.subject.name_kh if (first_rec and first_rec.subject) else "គ្រប់មុខវិជ្ជា"
-    teacher_name = first_rec.recorded_by.display_name if (first_rec and first_rec.recorded_by) else (classroom.homeroom_teacher.display_name if classroom.homeroom_teacher else "មិនបានបញ្ជាក់")
+    teacher_name = None
+    if first_rec and getattr(first_rec, 'recorded_by', None):
+        teacher_name = first_rec.recorded_by.display_name or first_rec.recorded_by.get_full_name()
+    elif classroom.homeroom_teacher:
+        teacher_name = classroom.homeroom_teacher.display_name or classroom.homeroom_teacher.khmer_name
 
-    title = f"របាយការណ៍អវត្តមានសិស្ស ថ្នាក់ {classroom.name}"
-    
-    msg_lines = [
-        f"🏫 *ថ្នាក់រៀន:* {classroom.name} ({classroom.code})",
-        f"📅 *កាលបរិច្ឆេទ:* {date_str} ({session_str}{period_str})",
-        f"📚 *មុខវិជ្ជា:* {subject_name}",
-        f"👨‍🏫 *គ្រូបង្រៀន/អ្នកស្រង់:* {teacher_name}",
-        f"━━━━━━━━━━━━━━━━━━━━",
-        f"📊 *ស្ថិតិវត្តមានសរុប:*",
-        f"• សិស្សសរុប: *{total_students}* នាក់",
-        f"• វត្តមាន: *{present_count}* នាក់",
-        f"• អវត្តមានឥតច្បាប់ (Absent): *{len(absent_list)}* នាក់",
-        f"• អវត្តមានមានច្បាប់ (Permission): *{len(permission_list)}* នាក់",
-        f"• មកយឺត (Late): *{len(late_list)}* នាក់",
-    ]
-
-    if absent_list:
-        msg_lines.append("\n❌ *បញ្ជីសិស្សអវត្តមានឥតច្បាប់ (តម្រៀបតាមអក្ខរក្រម):*")
-        for idx, a in enumerate(absent_list, 1):
-            note_str = f" ({a.notes})" if a.notes else ""
-            msg_lines.append(f" {idx}. {a.student.khmer_name} (អត្តលេខ: {a.student.student_id}){note_str}")
-
-    if permission_list:
-        msg_lines.append("\n📝 *បញ្ជីសិស្សសុំច្បាប់ (Permission):*")
-        for idx, p in enumerate(permission_list, 1):
-            note_str = f" ({p.notes})" if p.notes else ""
-            msg_lines.append(f" {idx}. {p.student.khmer_name} (អត្តលេខ: {p.student.student_id}){note_str}")
-
-    if late_list:
-        msg_lines.append("\n⏰ *បញ្ជីសិស្សមកយឺត (Late):*")
-        for idx, l in enumerate(late_list, 1):
-            note_str = f" ({l.notes})" if l.notes else ""
-            msg_lines.append(f" {idx}. {l.student.khmer_name} (អត្តលេខ: {l.student.student_id}){note_str}")
-
-    if not absent_list and not permission_list:
-        msg_lines.append("\n🎉 *អបអរសាទរ! ថ្នាក់នេះមានវត្តមានសិស្សពេញ ១០០% គ្រប់ចំនួន។*")
-
-    msg_lines.append(f"\n_ផ្ញើដោយ: {sender_user.display_name if sender_user else 'Admin'}_")
-
-    message = "\n".join(msg_lines)
-
-    log = send_telegram_notification(
-        title=title,
-        message=message,
-        recipient_name=f"ថ្នាក់ {classroom.name}",
-        recipient_type="Classroom Telegram",
-        custom_chat_id=target_chat_id
+    message = format_student_absence_telegram_message(
+        classroom=classroom,
+        target_date=target_date,
+        session=session,
+        period_number=period_number,
+        records=records,
+        teacher_name=teacher_name
     )
+
+    # Collect destination chat IDs
+    dest_chats = []
+    if primary_chat_id:
+        for cid in str(primary_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    # Also notify Group គ្រូបន្ទុកថ្នាក់ if configured
+    if settings.homeroom_group_chat_id:
+        for cid in str(settings.homeroom_group_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    # Also notify custom groups if configured
+    if getattr(settings, 'custom_dispatch_groups', None):
+        for cid in str(settings.custom_dispatch_groups).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    last_log = None
+    for chat_id in dest_chats:
+        last_log = send_telegram_notification(
+            title="",
+            message=message,
+            recipient_name=f"ថ្នាក់ {classroom.clean_code or classroom.name}",
+            recipient_type="Classroom Telegram",
+            custom_chat_id=chat_id,
+            raw_mode=True
+        )
 
     return {
         'success': True,
-        'chat_id': target_chat_id,
-        'log_id': log.id if log else None,
-        'status': log.status if log else 'SENT',
-        'message': f'បានផ្ញើរបាយការណ៍អវត្តមានថ្នាក់ {classroom.name} ទៅ Telegram (Chat ID: {target_chat_id}) ដោយជោគជ័យ!'
+        'chat_id': ", ".join(dest_chats),
+        'log_id': last_log.id if last_log else None,
+        'status': last_log.status if last_log else 'SENT',
+        'message': f'បានផ្ញើការជូនដំណឹងអវត្តមានថ្នាក់ {classroom.clean_code or classroom.name} ទៅកាន់ Telegram ដោយជោគជ័យ!'
     }
 
 
 def send_hourly_period_absence_dispatch(target_date, period_number, session=None, sender_user=None, force=False):
     """
     Automated Hourly Absence Dispatch System for a specific period (P1-P8):
-    1. Direct Guardians: Instant direct alerts to parents of absent/permission/late students.
-    2. Homeroom Teachers & Class Groups: Formatted classroom absence list sorted alphabetically.
-    3. Management Group & Custom Groups: Schoolwide summary ordered strictly by class hierarchy (Grade 7 to 12).
+    1. Classrooms are strictly sorted in sequential order: 7A, 7B, 7C, 7D, ..., 12A, 12B, ...
+    2. Direct Guardians: Instant direct alerts to parents of absent/permission/late students.
+    3. Group គ្រូបន្ទុកថ្នាក់ & Custom Groups: Dispatched classroom-by-classroom in strict 7A...12B order.
+    4. Homeroom Teachers & Class Groups: Formatted classroom absence notice sorted from ក to អ.
+    5. Management Group: Dispatched in 7A...12B order and overall schoolwide summary.
     """
     settings = AttendanceSetting.get_settings()
     config = TelegramConfig.objects.first()
@@ -132,12 +275,13 @@ def send_hourly_period_absence_dispatch(target_date, period_number, session=None
     date_str = target_date.strftime('%d/%m/%Y')
     session_str = "ពេលព្រឹក (Morning)" if session == 'MORNING' else "ពេលរសៀល (Afternoon)"
 
-    # 1. Fetch classrooms ordered strictly by grade_level (7 to 12) and code (7A, 7B, 8A... 12A)
+    # 1. Fetch classrooms and sort strictly in natural order starting from 7A, 7B, ..., 12A, 12B, ...
     active_year = AcademicYear.objects.filter(is_current=True).first()
-    classrooms_qs = Classroom.objects.all().select_related('homeroom_teacher', 'homeroom_teacher__user').order_by('grade_level', 'code')
+    classrooms_qs = Classroom.objects.all().select_related('homeroom_teacher', 'homeroom_teacher__user')
     if active_year:
         classrooms_qs = classrooms_qs.filter(academic_year=active_year)
     classrooms = list(classrooms_qs)
+    classrooms.sort(key=natural_classroom_sort_key)
 
     # 2. Fetch all student attendance records for this period & date
     records_qs = StudentAttendance.objects.filter(
@@ -155,66 +299,90 @@ def send_hourly_period_absence_dispatch(target_date, period_number, session=None
     total_late_all = 0
     guardian_sent_count = 0
     homeroom_sent_count = 0
+    group_sent_count = 0
     management_sent_count = 0
 
     class_reports = []
 
-    # 3. Process each classroom in Grade 7-12 order
+    # Prepare shared destination groups: Group គ្រូបន្ទុកថ្នាក់ and custom groups
+    shared_group_targets = []
+    if getattr(settings, 'homeroom_group_chat_id', None):
+        for cid in str(settings.homeroom_group_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in shared_group_targets:
+                shared_group_targets.append(cid)
+
+    if getattr(settings, 'custom_dispatch_groups', None):
+        for cid in str(settings.custom_dispatch_groups).split(','):
+            cid = cid.strip()
+            if cid and cid not in shared_group_targets:
+                shared_group_targets.append(cid)
+
+    # 3. Process each classroom in strict 7A, 7B, ..., 12A, 12B, ... order
     for cls in classrooms:
         cls_records = records_by_class.get(cls.id, [])
         if not cls_records:
             continue
 
-        # Sort students strictly alphabetically by khmer_name, student_id
-        sorted_records = sorted(cls_records, key=lambda r: (r.student.khmer_name, r.student.student_id))
-
-        absents = [r for r in sorted_records if r.status == StudentAttendance.Status.ABSENT]
-        permissions = [r for r in sorted_records if r.status == StudentAttendance.Status.PERMISSION]
-        lates = [r for r in sorted_records if r.status == StudentAttendance.Status.LATE]
+        absents = [r for r in cls_records if r.status == StudentAttendance.Status.ABSENT]
+        permissions = [r for r in cls_records if r.status == StudentAttendance.Status.PERMISSION]
+        lates = [r for r in cls_records if r.status == StudentAttendance.Status.LATE]
 
         total_absent_all += len(absents)
         total_permission_all += len(permissions)
         total_late_all += len(lates)
+
+        total_absent_class = len(absents) + len(permissions) + len(lates)
 
         class_reports.append({
             'classroom': cls,
             'absents': absents,
             'permissions': permissions,
             'lates': lates,
-            'total_absent_class': len(absents) + len(permissions) + len(lates),
-            'first_rec': sorted_records[0] if sorted_records else None
+            'total_absent_class': total_absent_class,
+            'first_rec': cls_records[0] if cls_records else None
         })
 
         # --- (A) Send to Direct Guardians (អាណាព្យាបាលផ្ទាល់) ---
         if settings.dispatch_to_guardians:
-            for r in sorted_records:
-                student = r.student
-                parent_chat = student.telegram_chat_id
-                if parent_chat:
-                    status_kh = "អវត្តមានឥតច្បាប់ (Absent)" if r.status == StudentAttendance.Status.ABSENT else ("អវត្តមានមានច្បាប់ (Permission)" if r.status == StudentAttendance.Status.PERMISSION else "មកយឺត (Late)")
-                    status_icon = "❌" if r.status == StudentAttendance.Status.ABSENT else ("📝" if r.status == StudentAttendance.Status.PERMISSION else "⏰")
-                    msg = (
-                        f"សួស្តីលោក/លោកស្រីអាណាព្យាបាលសិស្ស *{student.khmer_name}*!\n\n"
-                        f"🏫 *ថ្នាក់រៀន:* {cls.name}\n"
-                        f"📅 *កាលបរិច្ឆេទ:* {date_str} (ម៉ោងទី {period_num_int})\n"
-                        f"📚 *មុខវិជ្ជា:* {r.subject.name_kh if r.subject else 'មុខវិជ្ជាប្រចាំម៉ោង'}\n"
-                        f"{status_icon} *ស្ថានភាពវត្តមាន:* {status_kh}\n"
-                    )
-                    if r.notes:
-                        msg += f"💬 *កំណត់សម្គាល់:* {r.notes}\n"
-                    msg += f"\n_សេចក្តីជូនដំណឹងស្វ័យប្រវត្តិតាមម៉ោងពីសាលារៀន_"
+            for r in cls_records:
+                if r.status in [StudentAttendance.Status.ABSENT, StudentAttendance.Status.PERMISSION, StudentAttendance.Status.LATE]:
+                    student = r.student
+                    parent_chat = getattr(student, 'telegram_chat_id', None)
+                    if parent_chat:
+                        status_kh = "អវត្តមានឥតច្បាប់ (Absent)" if r.status == StudentAttendance.Status.ABSENT else ("អវត្តមានមានច្បាប់ (Permission)" if r.status == StudentAttendance.Status.PERMISSION else "មកយឺត (Late)")
+                        status_icon = "❌" if r.status == StudentAttendance.Status.ABSENT else ("🟡" if r.status == StudentAttendance.Status.PERMISSION else "⏰")
+                        msg = (
+                            f"សួស្តីលោក/លោកស្រីអាណាព្យាបាលសិស្ស *{student.khmer_name}*!\n\n"
+                            f"🏫 *ថ្នាក់រៀន:* {cls.clean_code or cls.name}\n"
+                            f"📅 *កាលបរិច្ឆេទ:* {date_str} (ម៉ោងទី {period_num_int})\n"
+                            f"📚 *មុខវិជ្ជា:* {r.subject.name_kh if r.subject else 'មុខវិជ្ជាប្រចាំម៉ោង'}\n"
+                            f"{status_icon} *ស្ថានភាពវត្តមាន:* {status_kh}\n"
+                        )
+                        if r.notes:
+                            msg += f"💬 *កំណត់សម្គាល់:* {r.notes}\n"
+                        msg += f"\n_សេចក្តីជូនដំណឹងស្វ័យប្រវត្តិតាមម៉ោងពីសាលារៀន_"
 
-                    send_telegram_notification(
-                        title=f"⚠️ សេចក្តីជូនដំណឹងវត្តមានសិស្ស: {student.khmer_name}",
-                        message=msg,
-                        recipient_name=student.father_name or student.mother_name or student.khmer_name,
-                        recipient_phone=student.father_phone or student.phone,
-                        recipient_type="Parent",
-                        custom_chat_id=parent_chat
-                    )
-                    guardian_sent_count += 1
+                        send_telegram_notification(
+                            title=f"⚠️ សេចក្តីជូនដំណឹងវត្តមានសិស្ស: {student.khmer_name}",
+                            message=msg,
+                            recipient_name=student.father_name or student.mother_name or student.khmer_name,
+                            recipient_phone=student.father_phone or student.phone,
+                            recipient_type="Parent",
+                            custom_chat_id=parent_chat
+                        )
+                        guardian_sent_count += 1
 
-        # --- (B) Send to Homeroom Teachers & Class Groups (គ្រូបន្ទុកថ្នាក់) ---
+        # Format student absence message for this classroom (sorted from ក to អ with Khmer numbers)
+        cls_absence_msg = format_student_absence_telegram_message(
+            classroom=cls,
+            target_date=target_date,
+            session=session,
+            period_number=period_num_int,
+            records=cls_records
+        )
+
+        # --- (B) Send to Homeroom Teachers & Class Group (គ្រូបន្ទុកថ្នាក់ & Group ថ្នាក់) ---
         if settings.dispatch_to_homeroom:
             homeroom_chat = cls.telegram_chat_id
             if not homeroom_chat and cls.homeroom_teacher:
@@ -223,59 +391,42 @@ def send_hourly_period_absence_dispatch(target_date, period_number, session=None
                     homeroom_chat = getattr(cls.homeroom_teacher.user, 'telegram_chat_id', None)
 
             if homeroom_chat:
-                first_rec = sorted_records[0] if sorted_records else None
-                subject_name = first_rec.subject.name_kh if (first_rec and first_rec.subject) else "មុខវិជ្ជាប្រចាំម៉ោង"
-                teacher_name = first_rec.recorded_by.display_name if (first_rec and first_rec.recorded_by) else (cls.homeroom_teacher.display_name if cls.homeroom_teacher else "គ្រូបង្រៀន")
-
-                lines = [
-                    f"🏫 *របាយការណ៍អវត្តមានសិស្ស ថ្នាក់ {cls.name}*",
-                    f"📅 *កាលបរិច្ឆេទ:* {date_str} ({session_str} • ម៉ោងទី {period_num_int})",
-                    f"📚 *មុខវិជ្ជា:* {subject_name} | 👨‍🏫 *អ្នកស្រង់:* {teacher_name}",
-                    f"━━━━━━━━━━━━━━━━━━━━",
-                    f"📊 *ស្ថិតិអវត្តមានសរុប:* ឥតច្បាប់: *{len(absents)}* | ច្បាប់: *{len(permissions)}* | យឺត: *{len(lates)}*",
-                ]
-                if absents:
-                    lines.append("\n❌ *បញ្ជីសិស្សអវត្តមានឥតច្បាប់ (តម្រៀបតាមអក្ខរក្រម):*")
-                    for idx, a in enumerate(absents, 1):
-                        note_str = f" ({a.notes})" if a.notes else ""
-                        lines.append(f" {idx}. {a.student.khmer_name} (ID: {a.student.student_id}){note_str}")
-                if permissions:
-                    lines.append("\n📝 *បញ្ជីសិស្សសុំច្បាប់ (Permission):*")
-                    for idx, p in enumerate(permissions, 1):
-                        note_str = f" ({p.notes})" if p.notes else ""
-                        lines.append(f" {idx}. {p.student.khmer_name} (ID: {p.student.student_id}){note_str}")
-                if lates:
-                    lines.append("\n⏰ *បញ្ជីសិស្សមកយឺត (Late):*")
-                    for idx, l in enumerate(lates, 1):
-                        note_str = f" ({l.notes})" if l.notes else ""
-                        lines.append(f" {idx}. {l.student.khmer_name} (ID: {l.student.student_id}){note_str}")
-
                 send_telegram_notification(
-                    title=f"របាយការណ៍អវត្តមាន ថ្នាក់ {cls.name} (ម៉ោងទី {period_num_int})",
-                    message="\n".join(lines),
-                    recipient_name=f"ថ្នាក់ {cls.name}",
+                    title="",
+                    message=cls_absence_msg,
+                    recipient_name=f"ថ្នាក់ {cls.clean_code or cls.name}",
                     recipient_type="Classroom / Homeroom",
-                    custom_chat_id=homeroom_chat
+                    custom_chat_id=homeroom_chat,
+                    raw_mode=True
                 )
                 homeroom_sent_count += 1
 
-    # --- (C) Send Master Schoolwide Absence Report to Management & Custom Groups ---
-    if settings.dispatch_to_management:
-        targets = []
-        if settings.management_chat_id:
-            for cid in settings.management_chat_id.split(','):
-                cid = cid.strip()
-                if cid and cid not in targets:
-                    targets.append(cid)
-        if getattr(settings, 'custom_dispatch_groups', None):
-            for cid in settings.custom_dispatch_groups.split(','):
-                cid = cid.strip()
-                if cid and cid not in targets:
-                    targets.append(cid)
-        if not targets and config and config.chat_id:
-            targets.append(config.chat_id)
+        # --- (C) Send to Group គ្រូបន្ទុកថ្នាក់ & Custom Groups (in strict 7A...12B order) ---
+        # Dispatches classroom absence notices to shared groups (for classes with absences, or if forced)
+        if shared_group_targets and (total_absent_class > 0 or force):
+            for g_chat in shared_group_targets:
+                send_telegram_notification(
+                    title="",
+                    message=cls_absence_msg,
+                    recipient_name="Group គ្រូបន្ទុកថ្នាក់ / Custom Group",
+                    recipient_type="Homeroom Group",
+                    custom_chat_id=g_chat,
+                    raw_mode=True
+                )
+                group_sent_count += 1
 
-        if targets:
+    # --- (D) Send to Management Telegram Group ---
+    if settings.dispatch_to_management:
+        mgmt_targets = []
+        if settings.management_chat_id:
+            for cid in str(settings.management_chat_id).split(','):
+                cid = cid.strip()
+                if cid and cid not in mgmt_targets:
+                    mgmt_targets.append(cid)
+        if not mgmt_targets and not shared_group_targets and config and config.chat_id:
+            mgmt_targets.append(config.chat_id)
+
+        if mgmt_targets:
             master_lines = [
                 f"📢 *របាយការណ៍អវត្តមានសិស្សប្រចាំម៉ោងទី {period_num_int}*",
                 f"📅 *កាលបរិច្ឆេទ:* {date_str} ({session_str})",
@@ -292,32 +443,35 @@ def send_hourly_period_absence_dispatch(target_date, period_number, session=None
                 master_lines.append("\n🎉 *ពុំមានសិស្សអវត្តមានក្នុងម៉ោងនេះឡើយ (វត្តមាន ១០០%) ឬមិនទាន់មានការស្រង់វត្តមាន។*")
             else:
                 for cr in class_reports:
-                    cls = cr['classroom']
+                    c_cls = cr['classroom']
                     c_abs = cr['absents']
                     c_perm = cr['permissions']
                     c_late = cr['lates']
 
-                    hr_name = cls.homeroom_teacher.khmer_name if cls.homeroom_teacher else "គ្មានគ្រូបន្ទុក"
-                    master_lines.append(f"\n🏫 *ថ្នាក់ទី {cls.name}* (អវត្តមានសរុប: {cr['total_absent_class']} នាក់ • គ្រូបន្ទុក: {hr_name})")
+                    hr_name = c_cls.homeroom_teacher.khmer_name if c_cls.homeroom_teacher else "គ្មានគ្រូបន្ទុក"
+                    c_display = c_cls.clean_code or c_cls.name
+                    master_lines.append(f"\n🏫 *ថ្នាក់ {c_display}* (អវត្តមានសរុប: {cr['total_absent_class']} នាក់ • គ្រូបន្ទុក: {hr_name})")
 
                     counter = 1
-                    for a in c_abs:
-                        master_lines.append(f"  {counter}. {a.student.khmer_name} (ID: {a.student.student_id}) ❌ ឥតច្បាប់")
-                        counter += 1
-                    for p in c_perm:
-                        note = f" ({p.notes})" if p.notes else ""
-                        master_lines.append(f"  {counter}. {p.student.khmer_name} (ID: {p.student.student_id}) 📝 មានច្បាប់{note}")
-                        counter += 1
-                    for l in c_late:
-                        master_lines.append(f"  {counter}. {l.student.khmer_name} (ID: {l.student.student_id}) ⏰ យឺត")
+                    all_abs = sort_khmer_attendance_records(c_abs + c_perm + c_late)
+                    for r in all_abs:
+                        sid_str = f"{r.student.student_id}-" if r.student.student_id else ""
+                        sname = r.student.khmer_name or ""
+                        if r.status == StudentAttendance.Status.ABSENT:
+                            tag = "❌ ឥតច្បាប់"
+                        elif r.status == StudentAttendance.Status.PERMISSION:
+                            tag = f"🟡 មានច្បាប់ ({r.notes})" if r.notes else "🟡 មានច្បាប់"
+                        else:
+                            tag = "⏰ យឺត"
+                        master_lines.append(f"  {to_khmer_numeral(counter)}. {sid_str}{sname} {tag}")
                         counter += 1
 
             master_msg = "\n".join(master_lines)
-            for t_chat in targets:
+            for t_chat in mgmt_targets:
                 send_telegram_notification(
                     title=f"របាយការណ៍អវត្តមានទូទាំងសាលា ម៉ោងទី {period_num_int}",
                     message=master_msg,
-                    recipient_name="Management / Custom Group",
+                    recipient_name="Management Group",
                     recipient_type="Management Group",
                     custom_chat_id=t_chat
                 )
@@ -328,107 +482,773 @@ def send_hourly_period_absence_dispatch(target_date, period_number, session=None
         'period_number': period_num_int,
         'guardian_sent_count': guardian_sent_count,
         'homeroom_sent_count': homeroom_sent_count,
+        'group_sent_count': group_sent_count,
         'management_sent_count': management_sent_count,
         'total_absent': total_absent_all,
         'total_permission': total_permission_all,
         'total_late': total_late_all,
-        'message': f"🚀 បានផ្ញើបញ្ជីអវត្តមានម៉ោងទី {period_num_int} ដោយជោគជ័យ! (អាណាព្យាបាល: {guardian_sent_count}, គ្រូបន្ទុក: {homeroom_sent_count}, គណៈគ្រប់គ្រង/Groups: {management_sent_count})"
+        'message': f"🚀 បានផ្ញើបញ្ជីអវត្តមានម៉ោងទី {period_num_int} ដោយជោគជ័យ! (អាណាព្យាបាល: {guardian_sent_count}, គ្រូបន្ទុក/ថ្នាក់: {homeroom_sent_count}, Group គ្រូបន្ទុកថ្នាក់: {group_sent_count}, គណៈគ្រប់គ្រង: {management_sent_count})"
     }
 
 
 
-def send_missing_teachers_telegram(target_date, period_number=None, custom_chat_id=None, sender_user=None):
+def format_classroom_display_code(classroom):
     """
-    Identifies teachers who have NOT submitted student attendance for scheduled teaching slots on target_date.
+    Formats classroom code into the style '8 (A)', '11 (F)', '11 (H)', etc.
+    as displayed in the teacher absence notification.
+    """
+    if not classroom:
+        return ""
+    raw = getattr(classroom, 'clean_code', None) or getattr(classroom, 'code', None) or getattr(classroom, 'name', None) or str(classroom)
+    c_str = str(raw).strip()
+    for pfx in ['ថ្នាក់ទី', 'ថ្នាក់ ទី', 'ថ្នាក់', 'ថ្នាក់ ']:
+        if c_str.startswith(pfx):
+            c_str = c_str[len(pfx):].strip()
+
+    # Matches patterns like '8A', '8 (A)', '8-A', '11F', '11 (H)'
+    m = re.match(r'^(\d+)\s*[-_]?\s*(?:\(?([A-Za-z0-9\-_]+)\)?)?$', c_str)
+    if m:
+        grade_num = m.group(1)
+        sec = m.group(2)
+        if sec:
+            return f"{grade_num} ({sec.upper()})"
+        return grade_num
+
+    grade = getattr(classroom, 'grade_level', None)
+    if grade:
+        letters = re.findall(r'[A-Za-z]+', c_str)
+        if letters:
+            return f"{grade} ({letters[0].upper()})"
+        return str(grade)
+
+    return c_str
+
+
+def format_teacher_absence_telegram_message(unrec_items, target_date, period_number=None, session=None, footer_text=None):
+    """
+    Builds the official Telegram teacher absence notification format for teachers
+    who have not submitted student attendance on time (after 30 minutes of class start):
+
+    ⚠️ ការជូនដំណឹងអវត្តមានគ្រូ
+    📅 ថ្ងៃទី៖ 22/07/2026
+    ⏰ ម៉ោងទី៖ ទី៣ (រសៀល)
+
+    ទី១៖
+    👤 ឈ្មោះគ្រូ៖ ទូច សុខម៉េត
+    🏫 បង្រៀនថ្នាក់ទី៖ 8 (A)
+
+    ទី២៖
+    👤 ឈ្មោះគ្រូ៖ សឿន សម្បត្តិ
+    🏫 បង្រៀនថ្នាក់ទី៖ 11 (F)
+
+    ទី៣៖
+    👤 ឈ្មោះគ្រូ៖ ឈឿន លីឆាយ
+    🏫 បង្រៀនថ្នាក់ទី៖ 11 (H)
+
+    ℹ️ សូមបញ្ជាក់មូលហេតុសម្រាប់ម៉ោងនេះ។
+    """
+    if isinstance(target_date, (datetime, date)):
+        date_str = target_date.strftime('%d/%m/%Y')
+    else:
+        date_str = str(target_date)
+
+    p_num_int = int(period_number) if period_number and str(period_number).isdigit() else None
+    if session == 'AFTERNOON':
+        session_label = "រសៀល"
+    elif session == 'MORNING':
+        session_label = "ព្រឹក"
+    else:
+        session_label = "រសៀល" if (p_num_int and p_num_int > 4) else "ព្រឹក"
+
+    if p_num_int:
+        period_text = f"ទី{to_khmer_numeral(p_num_int)} ({session_label})"
+    else:
+        period_text = f"ពេល{session_label}"
+
+    msg_lines = [
+        "⚠️ ការជូនដំណឹងអវត្តមានគ្រូ",
+        f"📅 ថ្ងៃទី៖ {date_str}",
+        f"⏰ ម៉ោងទី៖ {period_text}",
+        "",
+    ]
+
+    if not unrec_items:
+        msg_lines.append("🎉 គ្មានគ្រូអវត្តមាន ឬខកខានស្រង់វត្តមានសិស្សឡើយ (១០០% គ្រប់ចំនួន)")
+        msg_lines.append("")
+        msg_lines.append("ℹ️ សូមគណៈគ្រប់គ្រងសាលាជ្រាបជាព័ត៌មាន។")
+        return "\n".join(msg_lines)
+
+    # Sort strictly by classroom starting from 7A, 7B, ..., 12A, 12B, ...
+    def _teacher_absence_sort_key(item):
+        cls = item.get('classroom')
+        t = item.get('teacher')
+        cls_key = natural_classroom_sort_key(cls)
+        t_name = getattr(t, 'khmer_name', '') or getattr(t, 'display_name', '') or ''
+        return (cls_key, t_name)
+
+    sorted_items = sorted(unrec_items, key=_teacher_absence_sort_key)
+
+    for idx, item in enumerate(sorted_items, 1):
+        kh_idx = to_khmer_numeral(idx)
+        teacher = item.get('teacher')
+        classroom = item.get('classroom')
+        t_name = (getattr(teacher, 'khmer_name', '') or getattr(teacher, 'display_name', '') or (teacher.user.get_full_name() if getattr(teacher, 'user', None) else '') or "មិនបានបញ្ជាក់").strip()
+        cls_disp = format_classroom_display_code(classroom)
+
+        msg_lines.append(f"ទី{kh_idx}៖")
+        msg_lines.append(f"👤 ឈ្មោះគ្រូ៖ {t_name}")
+        msg_lines.append(f"🏫 បង្រៀនថ្នាក់ទី៖ {cls_disp}")
+        msg_lines.append("")
+
+    msg_lines.append(footer_text or "ℹ️ សូមបញ្ជាក់មូលហេតុសម្រាប់ម៉ោងនេះ។")
+    return "\n".join(msg_lines)
+
+
+def send_missing_teachers_telegram(target_date, period_number=None, session=None, custom_chat_id=None, sender_user=None, current_dt=None):
+    """
+    Identifies teachers who have NOT submitted student attendance for scheduled teaching slots on target_date
+    after the 30-minute grace window past class start time.
     Teachers on approved leave are excluded.
-    Dispatches warning alert to Management Telegram group or custom_chat_id.
+    Dispatches to:
+    1. custom_chat_id (if provided)
+    2. Management Telegram Group (settings.management_chat_id)
+    3. Homeroom Teachers Group (settings.homeroom_group_chat_id)
+    4. Custom Telegram Groups (settings.custom_dispatch_groups)
+    5. Bot default chat ID
+    Sorted strictly by classroom (7A, 7B, ..., 12A, 12B, ...).
     """
     settings = AttendanceSetting.get_settings()
     config = TelegramConfig.objects.first()
-    
-    target_chat_id = custom_chat_id or settings.management_chat_id or (config.chat_id if config else None)
-    if not target_chat_id:
-        return {
-            'success': False,
-            'message': 'ពុំទាន់បានកំណត់ Telegram Chat ID សម្រាប់គណៈគ្រប់គ្រងសាលា (Management Chat ID) នៅឡើយទេ។'
-        }
 
     teachers = Teacher.objects.filter(status='ACTIVE').order_by('teacher_id')
-    att_data = get_teacher_daily_attendance_data(teachers, target_date)
+    att_data = get_teacher_daily_attendance_data(teachers, target_date, current_dt=current_dt)
     rows = att_data['rows']
 
-    # Filter teachers with unrecorded slots
-    missing_teachers = []
+    p_num_int = int(period_number) if period_number and str(period_number).isdigit() else None
+    if session is None and p_num_int:
+        session = 'MORNING' if p_num_int <= 4 else 'AFTERNOON'
+
+    # Filter unrecorded slots
+    unrec_items = []
+    seen_slots = set()
+
     for r in rows:
-        # Check if teacher has unrecorded periods (and is NOT on approved leave)
-        if r['daily_status'] == 'EXCUSED_LEAVE':
-            continue # Exclude excused teachers!
-        
-        unrec_slots = []
-        for p_num, p_info in r['period_slots'].items():
-            if p_info and p_info['status'] == 'UNRECORDED':
-                if period_number is None or p_num == period_number:
-                    unrec_slots.append(p_info)
+        if r.get('daily_status') == 'EXCUSED_LEAVE':
+            continue  # Exclude approved leaves
 
-        if unrec_slots:
-            missing_teachers.append({
-                'teacher': r['teacher'],
-                'unrec_slots': unrec_slots,
-                'phone': r['teacher'].phone or 'គ្មានលេខទូរស័ព្ទ',
-            })
+        teacher = r['teacher']
+        for p_num, p_info in r.get('period_slots', {}).items():
+            if p_info and p_info.get('status') == 'UNRECORDED':
+                if p_num_int is None or p_num == p_num_int:
+                    slot = p_info.get('slot')
+                    cls = p_info.get('classroom')
+                    key = (teacher.id, cls.id if cls else None, p_num)
+                    if key not in seen_slots:
+                        seen_slots.add(key)
+                        unrec_items.append({
+                            'teacher': teacher,
+                            'classroom': cls,
+                            'slot': slot,
+                            'subject': p_info.get('subject'),
+                            'period_number': p_num,
+                        })
 
-    date_str = target_date.strftime('%d/%m/%Y')
-    period_title = f"នៅម៉ោងទី {period_number}" if period_number else "ប្រចាំថ្ងៃ"
-    title = f"🚨 របាយការណ៍គ្រូមិនទាន់ស្រង់វត្តមានសិស្ស ({period_title})"
+    # Sort strictly by classroom: 7A, 7B, ..., 12A, 12B, ...
+    unrec_items.sort(key=lambda x: (natural_classroom_sort_key(x['classroom']), getattr(x['teacher'], 'khmer_name', '') or ''))
 
-    if not missing_teachers:
-        message = f"🎉 *អបអរសាទរ!* នៅថ្ងៃទី {date_str} {period_title} លោកគ្រូ-អ្នកគ្រូទាំងអស់បានចុះវត្តមានសិស្សបានគ្រប់ចំនួន ១០០% គ្មានចន្លោះឡើយ។"
-    else:
-        msg_lines = [
-            f"⚠️ *សូមជម្រាបជូនគណៈគ្រប់គ្រងសាលា៖*",
-            f"ខាងក្រោមនេះជាបញ្ជីឈ្មោះលោកគ្រូ-អ្នកគ្រូដែល*មិនទាន់បានស្រង់អវត្តមានសិស្ស* សម្រាប់ថ្ងៃទី *{date_str}* ({period_title})៖",
-            f"━━━━━━━━━━━━━━━━━━━━",
-        ]
-        
-        for idx, item in enumerate(missing_teachers, 1):
-            t = item['teacher']
-            slots_text = []
-            for s in item['unrec_slots']:
-                cls_code = s['classroom'].code if s['classroom'] else ''
-                sub_name = s['subject'].name_kh if s['subject'] else ''
-                slots_text.append(f"ម៉ោងទី {s['slot'].period_number} ({cls_code} - {sub_name})")
-            
-            slots_str = ", ".join(slots_text)
-            msg_lines.append(f"*{idx}. {t.khmer_name}* (ID: {t.teacher_id} • ទូរស័ព្ទ: `{item['phone']}`)")
-            msg_lines.append(f"   👉 មិនទាន់ចុះ៖ {slots_str}")
-
-        msg_lines.append(f"━━━━━━━━━━━━━━━━━━━━")
-        msg_lines.append(f"📌 *សរុបគ្រូមិនទាន់ចុះ:* *{len(missing_teachers)}* នាក់")
-        msg_lines.append(f"_ប្រព័ន្ធសូមរំលឹកដល់លោកគ្រូ-អ្នកគ្រូ សូមមេត្តាបំពេញវត្តមានឱ្យបានទាន់ពេលវេលា។_")
-
-        message = "\n".join(msg_lines)
-
-    log = send_telegram_notification(
-        title=title,
-        message=message,
-        recipient_name="គណៈគ្រប់គ្រងសាលា (School Management)",
-        recipient_type="Management Telegram",
-        custom_chat_id=target_chat_id
+    message = format_teacher_absence_telegram_message(
+        unrec_items=unrec_items,
+        target_date=target_date,
+        period_number=p_num_int,
+        session=session
     )
+
+    # Collect destination chat IDs
+    dest_chats = []
+    if custom_chat_id:
+        for cid in str(custom_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if settings.management_chat_id:
+        for cid in str(settings.management_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if getattr(settings, 'homeroom_group_chat_id', None):
+        for cid in str(settings.homeroom_group_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if getattr(settings, 'custom_dispatch_groups', None):
+        for cid in str(settings.custom_dispatch_groups).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if not dest_chats and config and config.chat_id:
+        dest_chats.append(config.chat_id)
+
+    if not dest_chats:
+        return {
+            'success': False,
+            'message': 'ពុំទាន់បានកំណត់ Telegram Chat ID សម្រាប់ទទួលការជូនដំណឹងអវត្តមានគ្រូនៅឡើយទេ។'
+        }
+
+    last_log = None
+    for chat_id in dest_chats:
+        last_log = send_telegram_notification(
+            title="",
+            message=message,
+            recipient_name="Management / Telegram Groups",
+            recipient_type="Teacher Absence Notification",
+            custom_chat_id=chat_id,
+            raw_mode=True
+        )
 
     return {
         'success': True,
-        'chat_id': target_chat_id,
-        'missing_count': len(missing_teachers),
-        'log_id': log.id if log else None,
-        'status': log.status if log else 'SENT',
-        'message': f'បានផ្ញើរបាយការណ៍គ្រូមិនទាន់ស្រង់វត្តមាន ({len(missing_teachers)} នាក់) ទៅ Telegram គណៈគ្រប់គ្រងដោយជោគជ័យ!'
+        'chat_id': ", ".join(dest_chats),
+        'unrec_count': len(unrec_items),
+        'log_id': last_log.id if last_log else None,
+        'status': last_log.status if last_log else 'SENT',
+        'message': f'បានផ្ញើការជូនដំណឹងអវត្តមានគ្រូ ({len(unrec_items)} នាក់) ទៅ Telegram ដោយជោគជ័យ!'
     }
 
 
-def send_daily_summary_telegram(target_date=None, send_students=True, send_teachers=True, custom_chat_id=None):
+def get_teacher_display_name(t):
     """
-    Compiles and dispatches the daily school-wide student and teacher attendance summary digest.
+    Extracts clean Khmer display name for a Teacher instance, dictionary, or string.
+    """
+    if not t:
+        return ""
+    if isinstance(t, str):
+        return t.strip()
+    if isinstance(t, dict):
+        return (t.get('name') or t.get('khmer_name') or t.get('display_name') or str(t)).strip()
+    if hasattr(t, 'teacher'):
+        t = t.teacher
+    return (getattr(t, 'khmer_name', None) or getattr(t, 'display_name', None) or (t.user.get_full_name() if getattr(t, 'user', None) else '') or str(t)).strip()
+
+
+def sort_khmer_teacher_entries(teachers):
+    """
+    Sorts teachers alphabetically by Khmer name from ក to អ (U+1780 to U+17A2)
+    using Khmer linguistic collation.
+    """
+    import locale
+    try:
+        locale.setlocale(locale.LC_COLLATE, 'km_KH')
+        col_key = locale.strxfrm
+    except Exception:
+        col_key = lambda s: s
+
+    def _sort_key(t):
+        name = get_teacher_display_name(t)
+        return (col_key(name), name)
+
+    return sorted(teachers, key=_sort_key)
+
+
+def format_daily_teacher_absence_report_message(unrecorded_teachers, on_leave_teachers, target_date, footer_text=None):
+    """
+    Builds the official Telegram daily teacher absence report format:
+
+    ⚠️ របាយការណ៍អវត្តមានគ្រូប្រចាំថ្ងៃ
+    📅 ថ្ងៃទី៖ 22/07/2026
+
+    ❌ គ្រូមិនបានបញ្ចូលអវត្តមាន៖
+    ទី១៖ កាន ដាវី
+    ទី២៖ ក្រឹង ចន្ធា
+    ...
+    ទី២៦៖ អេង រតនា
+
+    🟡 គ្រូមានច្បាប់ឈប់សម្រាក៖
+    ទី១៖ សុទ្ធ ចរិយា
+    """
+    if isinstance(target_date, (datetime, date)):
+        date_str = target_date.strftime('%d/%m/%Y')
+    else:
+        date_str = str(target_date)
+
+    msg_lines = [
+        "⚠️ របាយការណ៍អវត្តមានគ្រូប្រចាំថ្ងៃ",
+        f"📅 ថ្ងៃទី៖ {date_str}",
+        "",
+        "❌ គ្រូមិនបានបញ្ចូលអវត្តមាន៖",
+    ]
+
+    # Sort unrecorded teachers alphabetically by Khmer name (ក to អ)
+    sorted_unrec = sort_khmer_teacher_entries(unrecorded_teachers)
+    if sorted_unrec:
+        for idx, t in enumerate(sorted_unrec, 1):
+            kh_idx = to_khmer_numeral(idx)
+            t_name = get_teacher_display_name(t)
+            msg_lines.append(f"ទី{kh_idx}៖ {t_name}")
+    else:
+        msg_lines.append("🎉 គ្មានគ្រូខកខានស្រង់វត្តមានទេ (១០០% គ្រប់ចំនួន)")
+
+    msg_lines.append("")
+    msg_lines.append("🟡 គ្រូមានច្បាប់ឈប់សម្រាក៖")
+
+    # Sort on-leave teachers alphabetically by Khmer name (ក to អ)
+    sorted_leave = sort_khmer_teacher_entries(on_leave_teachers)
+    if sorted_leave:
+        for idx, t in enumerate(sorted_leave, 1):
+            kh_idx = to_khmer_numeral(idx)
+            t_name = get_teacher_display_name(t)
+            msg_lines.append(f"ទី{kh_idx}៖ {t_name}")
+    else:
+        msg_lines.append("🎉 គ្មានគ្រូសុំច្បាប់សម្រាកទេ")
+
+    if footer_text:
+        msg_lines.append("")
+        msg_lines.append(footer_text)
+
+    return "\n".join(msg_lines)
+
+
+def get_daily_teacher_absence_data(target_date=None, active_year=None, current_dt=None):
+    """
+    Evaluates attendance for all active teachers on target_date and groups them into:
+    - unrecorded_teachers: Teachers who had scheduled teaching slots but did not submit attendance (and are not on approved leave)
+    - on_leave_teachers: Teachers on approved leave (EXCUSED_LEAVE)
+    Deduplicates teachers so each teacher appears only once.
+    """
+    if target_date is None:
+        target_date = date.today()
+
+    teachers = Teacher.objects.filter(status='ACTIVE').order_by('teacher_id')
+    att_data = get_teacher_daily_attendance_data(teachers, target_date, active_year=active_year, current_dt=current_dt)
+    rows = att_data.get('rows', [])
+
+    unrecorded_map = {}
+    on_leave_map = {}
+
+    for r in rows:
+        teacher = r['teacher']
+        d_status = r.get('daily_status')
+
+        if d_status == 'EXCUSED_LEAVE':
+            on_leave_map[teacher.id] = teacher
+            continue
+
+        # Check if teacher has unrecorded periods
+        unrec_slots = 0
+        for p_num, p_info in r.get('period_slots', {}).items():
+            if p_info and p_info.get('status') == 'UNRECORDED':
+                unrec_slots += 1
+
+        if unrec_slots > 0 or d_status == 'UNEXCUSED_ABSENCE':
+            unrecorded_map[teacher.id] = teacher
+
+    # Also check manual TeacherAttendance records for target_date
+    manual_atts = TeacherAttendance.objects.filter(date=target_date)
+    for ma in manual_atts:
+        t = ma.teacher
+        if ma.status == TeacherAttendance.Status.EXCUSED_LEAVE:
+            on_leave_map[t.id] = t
+            if t.id in unrecorded_map:
+                del unrecorded_map[t.id]
+        elif ma.status in [TeacherAttendance.Status.ABSENT, TeacherAttendance.Status.UNEXCUSED_ABSENCE]:
+            if t.id not in on_leave_map:
+                unrecorded_map[t.id] = t
+
+    unrecorded_teachers = list(unrecorded_map.values())
+    on_leave_teachers = list(on_leave_map.values())
+
+    return {
+        'unrecorded_teachers': sort_khmer_teacher_entries(unrecorded_teachers),
+        'on_leave_teachers': sort_khmer_teacher_entries(on_leave_teachers),
+        'total_unrecorded': len(unrecorded_teachers),
+        'total_on_leave': len(on_leave_teachers),
+    }
+
+
+def send_daily_teacher_absence_telegram(
+    target_date=None,
+    custom_chat_id=None,
+    send_to_management=True,
+    send_to_homeroom_group=True,
+    send_to_custom_groups=True,
+    current_dt=None
+):
+    """
+    Compiles and dispatches the daily teacher absence report (sorted alphabetically from ក to អ)
+    to Telegram (Management, Homeroom Teachers Group, Custom Groups).
+    """
+    if target_date is None:
+        target_date = date.today()
+
+    settings = AttendanceSetting.get_settings()
+    config = TelegramConfig.objects.first()
+
+    dest_chats = []
+    if custom_chat_id:
+        for cid in str(custom_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if send_to_management and settings.management_chat_id:
+        for cid in str(settings.management_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if send_to_homeroom_group and getattr(settings, 'homeroom_group_chat_id', None):
+        for cid in str(settings.homeroom_group_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if send_to_custom_groups and getattr(settings, 'custom_dispatch_groups', None):
+        for cid in str(settings.custom_dispatch_groups).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if not dest_chats and config and config.chat_id:
+        dest_chats.append(config.chat_id)
+
+    if not dest_chats:
+        return {
+            'success': False,
+            'message': 'ពុំទាន់បានកំណត់ Telegram Chat ID សម្រាប់ទទួលរបាយការណ៍អវត្តមានគ្រូប្រចាំថ្ងៃឡើយ។'
+        }
+
+    teacher_data = get_daily_teacher_absence_data(target_date=target_date, current_dt=current_dt)
+    message = format_daily_teacher_absence_report_message(
+        unrecorded_teachers=teacher_data['unrecorded_teachers'],
+        on_leave_teachers=teacher_data['on_leave_teachers'],
+        target_date=target_date
+    )
+
+    last_log = None
+    sent_count = 0
+    for chat_id in dest_chats:
+        last_log = send_telegram_notification(
+            title="",
+            message=message,
+            recipient_name="Management & Telegram Groups",
+            recipient_type="Daily Teacher Absence Report",
+            custom_chat_id=chat_id,
+            raw_mode=True
+        )
+        sent_count += 1
+
+    date_str = target_date.strftime('%d/%m/%Y') if isinstance(target_date, (datetime, date)) else str(target_date)
+    return {
+        'success': True,
+        'target_date': date_str,
+        'unrecorded_count': teacher_data['total_unrecorded'],
+        'on_leave_count': teacher_data['total_on_leave'],
+        'dest_chats': dest_chats,
+        'log_id': last_log.id if last_log else None,
+        'status': last_log.status if last_log else 'SENT',
+        'message': f"បានផ្ញើរបាយការណ៍អវត្តមានគ្រូប្រចាំថ្ងៃ ({date_str}) [ខកខាន: {teacher_data['total_unrecorded']} នាក់, ច្បាប់: {teacher_data['total_on_leave']} នាក់] ទៅកាន់ Telegram ដោយជោគជ័យ!"
+    }
+
+
+def format_classroom_short_name(cls):
+    """
+    Returns clean classroom code/name without 'ថ្នាក់ទី' or 'ថ្នាក់' prefix.
+    E.g. 'ថ្នាក់ទី 7B' -> '7B', '7B' -> '7B', 'ថ្នាក់ 11A' -> '11A'
+    """
+    if not cls:
+        return ""
+    raw = getattr(cls, 'clean_code', None) or getattr(cls, 'code', None) or getattr(cls, 'name', None) or str(cls)
+    c_str = str(raw).strip()
+    changed = True
+    while changed:
+        changed = False
+        for pfx in ['ថ្នាក់ទី', 'ថ្នាក់ ទី', 'ថ្នាក់', 'ថ្នាក់ ']:
+            if c_str.startswith(pfx):
+                c_str = c_str[len(pfx):].strip()
+                changed = True
+    return c_str or str(cls)
+
+
+def sort_khmer_student_entries(entries):
+    """
+    Sorts student entries or objects alphabetically by Khmer name (from ក to អ).
+    Secondary sort is by student_id.
+    Accepts dicts with 'name'/'khmer_name'/'student_id', Student objects, or Attendance records.
+    """
+    def _key(item):
+        if isinstance(item, dict):
+            name = item.get('name') or item.get('khmer_name') or ''
+            sid = str(item.get('student_id') or item.get('id') or '')
+        elif hasattr(item, 'student'):
+            st = getattr(item, 'student', None)
+            name = (getattr(st, 'khmer_name', None) or (st.user.get_full_name() if getattr(st, 'user', None) else '') or '') if st else ''
+            sid = str(getattr(st, 'student_id', '') or '')
+        elif hasattr(item, 'khmer_name'):
+            name = getattr(item, 'khmer_name', '') or (item.user.get_full_name() if getattr(item, 'user', None) else '') or ''
+            sid = str(getattr(item, 'student_id', '') or '')
+        else:
+            name = str(item)
+            sid = ''
+        return (name.strip(), sid)
+
+    return sorted(entries, key=_key)
+
+
+def format_daily_grade_student_absence_message(grade_level, classrooms_data, target_date, footer_text=None):
+    """
+    Builds the official Telegram daily student absence report for a specific grade level:
+
+    ⚠️ របាយការណ៍អវត្តមានសិស្សប្រចាំថ្ងៃ - កម្រិតថ្នាក់ទី ៧
+    📅 ថ្ងៃទី៖ 22/07/2026
+
+    🏫 ថ្នាក់ 7B
+    ១. 26398-នីន ដាលីស (១ពេល)
+    ២. 26462-វ៉ែត ម៉ារីន (១ពេល)
+    ៣. 26512-ឡិក គីមឡុង (១ពេល)
+
+    🏫 ថ្នាក់ 7C
+    ១. 26342-គឹម រចនា (១ពេល)
+    ...
+    """
+    if isinstance(target_date, (datetime, date)):
+        date_str = target_date.strftime('%d/%m/%Y')
+    else:
+        date_str = str(target_date)
+
+    grade_khmer = to_khmer_numeral(grade_level)
+    msg_lines = [
+        f"⚠️ របាយការណ៍អវត្តមានសិស្សប្រចាំថ្ងៃ - កម្រិតថ្នាក់ទី {grade_khmer}",
+        f"📅 ថ្ងៃទី៖ {date_str}",
+    ]
+
+    active_classrooms = []
+    if classrooms_data:
+        for item in classrooms_data:
+            cls = item.get('classroom')
+            students = item.get('students', [])
+            if students:
+                active_classrooms.append((cls, students))
+
+    if not active_classrooms:
+        msg_lines.append("")
+        msg_lines.append("🎉 គ្មានសិស្សអវត្តមានទេ (វត្តមាន ១០០%)")
+        if footer_text:
+            msg_lines.append("")
+            msg_lines.append(footer_text)
+        return "\n".join(msg_lines)
+
+    # Sort classrooms strictly: 7A, 7B, 7C, 7D...
+    sorted_classrooms = sorted(active_classrooms, key=lambda x: natural_classroom_sort_key(x[0]))
+
+    for cls, students in sorted_classrooms:
+        cls_code = format_classroom_short_name(cls)
+        msg_lines.append("")
+        msg_lines.append(f"🏫 ថ្នាក់ {cls_code}")
+
+        # Sort students alphabetically by Khmer name (from ក to អ)
+        sorted_students = sort_khmer_student_entries(students)
+        for idx, s in enumerate(sorted_students, 1):
+            kh_idx = to_khmer_numeral(idx)
+            sid = s.get('student_id') or s.get('id')
+            sid_str = f"{sid}-" if sid else ""
+            s_name = s.get('name') or s.get('khmer_name') or ""
+            count = s.get('count', 1)
+            count_kh = to_khmer_numeral(count)
+            msg_lines.append(f"{kh_idx}. {sid_str}{s_name} ({count_kh}ពេល)")
+
+    if footer_text:
+        msg_lines.append("")
+        msg_lines.append(footer_text)
+
+    return "\n".join(msg_lines)
+
+
+def get_daily_grade_student_absences(target_date, grade_level, active_year=None):
+    """
+    Collects absent/excused students for all classrooms of a given grade level on target_date.
+    Classrooms are ordered sequentially: 7A, 7B, 7C, 7D...
+    Each absent student is listed once with total missed sessions e.g. (១ពេល) or (២ពេល).
+    Students are sorted alphabetically by Khmer name (ក to អ).
+    """
+    if active_year is None:
+        active_year = AcademicYear.objects.filter(is_current=True).first()
+
+    classrooms_qs = Classroom.objects.filter(grade_level=grade_level)
+    if active_year:
+        classrooms_qs = classrooms_qs.filter(academic_year=active_year)
+
+    classrooms = sorted(classrooms_qs, key=natural_classroom_sort_key)
+    result = []
+
+    for cls in classrooms:
+        records = StudentAttendance.objects.filter(
+            classroom=cls,
+            date=target_date,
+            status__in=[StudentAttendance.Status.ABSENT, StudentAttendance.Status.PERMISSION, StudentAttendance.Status.LATE]
+        ).select_related('student', 'student__user')
+
+        if not records.exists():
+            continue
+
+        # Group by student
+        student_groups = {}
+        for r in records:
+            st = r.student
+            if not st:
+                continue
+            if st.id not in student_groups:
+                student_groups[st.id] = {
+                    'student': st,
+                    'records': [],
+                    'sessions': set(),
+                }
+            student_groups[st.id]['records'].append(r)
+            sess = r.session
+            if not sess and r.period_number:
+                sess = 'MORNING' if r.period_number <= 4 else 'AFTERNOON'
+            student_groups[st.id]['sessions'].add(sess or 'MORNING')
+
+        student_list = []
+        for st_id, data in student_groups.items():
+            st = data['student']
+            s_name = (st.khmer_name or (st.user.get_full_name() if getattr(st, 'user', None) else '') or '').strip()
+            sid = str(getattr(st, 'student_id', '') or '')
+            sess_count = len(data['sessions']) if data['sessions'] else 1
+            student_list.append({
+                'student': st,
+                'student_id': sid,
+                'name': s_name,
+                'count': sess_count,
+            })
+
+        # Sort students alphabetically by Khmer name (ក to អ)
+        sorted_students = sort_khmer_student_entries(student_list)
+        if sorted_students:
+            result.append({
+                'classroom': cls,
+                'students': sorted_students,
+            })
+
+    return result
+
+
+def send_daily_grade_student_absence_telegram(
+    target_date=None,
+    grade_levels=None,
+    custom_chat_id=None,
+    send_to_homeroom_group=True,
+    send_to_management=True,
+    send_to_custom_groups=True,
+    only_with_absences=True
+):
+    """
+    Compiles and dispatches the daily student absence report by grade level
+    from Grade 7 up to Grade 12 (ordered by classroom: 7A, 7B, ..., 12A, 12B, ... and sorted by student name).
+    Each grade level is dispatched in its own dedicated message.
+    """
+    if target_date is None:
+        target_date = date.today()
+
+    if grade_levels is None:
+        # Default Grades 7 to 12 as requested
+        grade_levels = [7, 8, 9, 10, 11, 12]
+
+    settings = AttendanceSetting.get_settings()
+    config = TelegramConfig.objects.first()
+
+    # Collect destination chats
+    dest_chats = []
+    if custom_chat_id:
+        for cid in str(custom_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if send_to_management and settings.management_chat_id:
+        for cid in str(settings.management_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if send_to_homeroom_group and getattr(settings, 'homeroom_group_chat_id', None):
+        for cid in str(settings.homeroom_group_chat_id).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if send_to_custom_groups and getattr(settings, 'custom_dispatch_groups', None):
+        for cid in str(settings.custom_dispatch_groups).split(','):
+            cid = cid.strip()
+            if cid and cid not in dest_chats:
+                dest_chats.append(cid)
+
+    if not dest_chats and config and config.chat_id:
+        dest_chats.append(config.chat_id)
+
+    if not dest_chats:
+        return {
+            'success': False,
+            'message': 'ពុំទាន់បានកំណត់ Telegram Chat ID សម្រាប់ទទួលរបាយការណ៍អវត្តមានសិស្សប្រចាំថ្ងៃឡើយ។'
+        }
+
+    active_year = AcademicYear.objects.filter(is_current=True).first()
+    sent_grades = []
+    total_messages_sent = 0
+    total_absent_students = 0
+
+    for grade in grade_levels:
+        classrooms_data = get_daily_grade_student_absences(target_date, grade, active_year=active_year)
+        student_count = sum(len(c['students']) for c in classrooms_data)
+
+        if not classrooms_data and only_with_absences:
+            continue
+
+        message = format_daily_grade_student_absence_message(
+            grade_level=grade,
+            classrooms_data=classrooms_data,
+            target_date=target_date
+        )
+
+        grade_sent_count = 0
+        for chat_id in dest_chats:
+            send_telegram_notification(
+                title="",
+                message=message,
+                recipient_name=f"Telegram Group (Grade {grade})",
+                recipient_type=f"Daily Absence Grade {grade}",
+                custom_chat_id=chat_id,
+                raw_mode=True
+            )
+            grade_sent_count += 1
+            total_messages_sent += 1
+
+        total_absent_students += student_count
+        sent_grades.append({
+            'grade': grade,
+            'classrooms_count': len(classrooms_data),
+            'students_count': student_count,
+            'recipients_count': grade_sent_count
+        })
+
+    date_str = target_date.strftime('%d/%m/%Y') if isinstance(target_date, (datetime, date)) else str(target_date)
+    return {
+        'success': True,
+        'target_date': date_str,
+        'grades_sent': sent_grades,
+        'total_messages_sent': total_messages_sent,
+        'total_absent_students': total_absent_students,
+        'dest_chats': dest_chats,
+        'message': f"បានផ្ញើរបាយការណ៍អវត្តមានសិស្សប្រចាំថ្ងៃ ({date_str}) តាមកម្រិតថ្នាក់ ({len(sent_grades)} កម្រិត, សរុប {total_absent_students} នាក់) ទៅកាន់ Telegram ដោយជោគជ័យ!"
+    }
+
+
+def send_daily_summary_telegram(target_date=None, send_students=True, send_teachers=True, custom_chat_id=None, send_grade_reports=True):
+    """
+    Compiles and dispatches the daily school-wide student and teacher attendance summary digest,
+    and dispatches the grade-by-grade student absence reports from Grade 7 up to Grade 12.
     """
     if target_date is None:
         target_date = date.today()
@@ -500,12 +1320,31 @@ def send_daily_summary_telegram(target_date=None, send_students=True, send_teach
         custom_chat_id=target_chat_id
     )
 
+    # 3. Dispatches Grade-by-Grade Student Absence Reports (Grades 7 to 12)
+    grade_report_res = None
+    if send_students and send_grade_reports:
+        grade_report_res = send_daily_grade_student_absence_telegram(
+            target_date=target_date,
+            grade_levels=[7, 8, 9, 10, 11, 12],
+            custom_chat_id=custom_chat_id
+        )
+
+    # 4. Dispatches Daily Teacher Absence Report (Sorted Alphabetically from ក to អ)
+    teacher_report_res = None
+    if send_teachers:
+        teacher_report_res = send_daily_teacher_absence_telegram(
+            target_date=target_date,
+            custom_chat_id=custom_chat_id
+        )
+
     return {
         'success': True,
         'chat_id': target_chat_id,
         'log_id': log.id if log else None,
         'status': log.status if log else 'SENT',
-        'message': f'បានផ្ញើរបាយការណ៍សង្ខេបប្រចាំថ្ងៃ ({date_str}) ទៅកាន់ Telegram ដោយជោគជ័យ!'
+        'grade_reports': grade_report_res,
+        'teacher_reports': teacher_report_res,
+        'message': f'បានផ្ញើរបាយការណ៍សង្ខេបប្រចាំថ្ងៃ ({date_str}), របាយការណ៍សិស្ស (៧-១២) និងរបាយការណ៍អវត្តមានគ្រូ ទៅកាន់ Telegram ដោយជោគជ័យ!'
     }
 
 

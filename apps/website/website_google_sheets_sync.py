@@ -13,7 +13,7 @@ from django.conf import settings
 
 from apps.accounts.models import GoogleSheetsConfig, SchoolProfile
 from apps.extras.models import Announcement
-from apps.website.models import NewsArticle, ContactMessage
+from apps.website.models import NewsArticle, ContactMessage, GalleryAlbum
 from apps.tools.google_sheets_service import GoogleSheetsService
 from apps.tools.ai_translation_service import AiTranslationService
 
@@ -72,6 +72,16 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
         "ប្រធានបទ",
         "ខ្លឹមសារសារ",
         "បានអាន (TRUE/FALSE)"
+    ]
+
+    GALLERY_HEADERS = [
+        "ID",
+        "កាលបរិច្ឆេទ",
+        "ឈ្មោះអាល់ប៊ុម (Khmer)",
+        "ឈ្មោះអាល់ប៊ុម (English)",
+        "ការពិពណ៌នា (Khmer)",
+        "ការពិពណ៌នា (English)",
+        "ផ្សាយជាសាធារណៈ (TRUE/FALSE)"
     ]
 
     def get_or_create_website_spreadsheet(self):
@@ -253,9 +263,21 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
             ("street_address", "អាសយដ្ឋានផ្លូវ (Khmer)", getattr(p, "street_address", "") or "", "លេខផ្ទះ/ផ្លូវ"),
             ("street_address_en", "អាសយដ្ឋានផ្លូវ (English)", getattr(p, "street_address_en", "") or "", "Street address in English"),
             ("village", "ភូមិ", getattr(p, "village", "") or "", "ភូមិ"),
+            ("village_en", "ភូមិ (English)", getattr(p, "village_en", "") or "", "Village in English"),
             ("commune", "ឃុំ/សង្កាត់", getattr(p, "commune", "") or "", "ឃុំ ឬសង្កាត់"),
+            ("commune_en", "ឃុំ/សង្កាត់ (English)", getattr(p, "commune_en", "") or "", "Commune in English"),
             ("district", "ស្រុក/ខណ្ឌ", getattr(p, "district", "") or "", "ស្រុក ខណ្ឌ ឬក្រុង"),
+            ("district_en", "ស្រុក/ខណ្ឌ (English)", getattr(p, "district_en", "") or "", "District in English"),
             ("province", "រាជធានី/ខេត្ត", getattr(p, "province", "") or "", "រាជធានី ឬខេត្ត"),
+            ("province_en", "រាជធានី/ខេត្ត (English)", getattr(p, "province_en", "") or "", "Province in English"),
+            ("education_levels", "កម្រិតសិក្សា (Khmer)", getattr(p, "education_levels", "") or "", "កម្រិតសិក្សាផ្លូវការ"),
+            ("education_levels_en", "កម្រិតសិក្សា (English)", getattr(p, "education_levels_en", "") or "", "Education levels in English"),
+            ("ministry_name", "ក្រសួងសាមី (Khmer)", getattr(p, "ministry_name", "") or "", "ក្រសួងអប់រំ យុវជន និងកីឡា"),
+            ("ministry_name_en", "ក្រសួងសាមី (English)", getattr(p, "ministry_name_en", "") or "", "Ministry Name in English"),
+            ("poe_name", "មន្ទីរអប់រំ (Khmer)", getattr(p, "poe_name", "") or "", "មន្ទីរអប់រំ យុវជន និងកីឡា"),
+            ("poe_name_en", "មន្ទីរអប់រំ (English)", getattr(p, "poe_name_en", "") or "", "Provincial Dept in English"),
+            ("doe_name", "ការិយាល័យអប់រំ (Khmer)", getattr(p, "doe_name", "") or "", "ការិយាល័យអប់រំ យុវជន និងកីឡា"),
+            ("doe_name_en", "ការិយាល័យអប់រំ (English)", getattr(p, "doe_name_en", "") or "", "District Office in English"),
         ]
         profile_rows = [[k, label, val, desc] for k, label, val, desc in profile_fields]
         ws_profile.update(profile_rows, f'A2:D{len(profile_rows) + 1}')
@@ -279,6 +301,24 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
         if contact_rows:
             ws_contact.update(contact_rows, f'A2:H{len(contact_rows) + 1}')
 
+        # 5. Gallery Albums Sheet
+        ws_gallery = self._prepare_worksheet(sh, "Gallery_Albums", self.GALLERY_HEADERS)
+        gallery_qs = GalleryAlbum.objects.all().order_by('-event_date', '-id')
+        gallery_rows = []
+        for g in gallery_qs:
+            dt_str = g.event_date.strftime('%Y-%m-%d') if g.event_date else ''
+            gallery_rows.append([
+                g.id,
+                dt_str,
+                g.title,
+                g.title_en or '',
+                g.description or '',
+                g.description_en or '',
+                "TRUE" if g.is_published else "FALSE"
+            ])
+        if gallery_rows:
+            ws_gallery.update(gallery_rows, f'A2:G{len(gallery_rows) + 1}')
+
         # Update last sync time
         registry = self.config.spreadsheets_registry or {}
         if self.REGISTRY_KEY in registry:
@@ -287,10 +327,17 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
             self.config.save(update_fields=['spreadsheets_registry'])
 
         return {
+            'status': 'success',
             'announcements': len(ann_rows),
+            'announcements_count': len(ann_rows),
             'news': len(news_rows),
+            'news_count': len(news_rows),
             'profile_fields': len(profile_rows),
-            'contacts': len(contact_rows)
+            'profile_fields_count': len(profile_rows),
+            'contacts': len(contact_rows),
+            'contact_messages_count': len(contact_rows),
+            'gallery_albums': len(gallery_rows),
+            'gallery_albums_count': len(gallery_rows),
         }
 
     # =========================================================================
@@ -310,6 +357,8 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
             'announcements_updated': 0,
             'news_created': 0,
             'news_updated': 0,
+            'gallery_created': 0,
+            'gallery_updated': 0,
             'profile_updated': False,
             'contact_updated': 0,
         }
@@ -519,6 +568,71 @@ class WebsiteGoogleSheetsSync(GoogleSheetsService):
                             summary['contact_updated'] += 1
         except Exception as e:
             logger.error(f"Error pulling contact messages from Google Sheets: {e}")
+
+        # 5. Pull Gallery Albums
+        try:
+            ws_gal = sh.worksheet("Gallery_Albums")
+            gal_records = ws_gal.get_all_values()
+            if len(gal_records) > 1:
+                new_id_updates = []
+                for row_idx, row in enumerate(gal_records[1:], start=2):
+                    if not row or not any(row):
+                        continue
+                    row_id = row[0].strip() if len(row) > 0 else ""
+                    dt_val = row[1].strip() if len(row) > 1 else ""
+                    title = row[2].strip() if len(row) > 2 else ""
+                    if not title:
+                        continue
+                    title_en = row[3].strip() if len(row) > 3 else ""
+                    desc = row[4].strip() if len(row) > 4 else ""
+                    desc_en = row[5].strip() if len(row) > 5 else ""
+                    pub_str = row[6].strip().upper() if len(row) > 6 else "TRUE"
+                    is_published = pub_str in ["TRUE", "1", "YES", "ពិត"]
+
+                    ev_date = None
+                    if dt_val:
+                        try:
+                            ev_date = datetime.strptime(dt_val, '%Y-%m-%d').date()
+                        except Exception:
+                            pass
+
+                    if row_id and row_id.isdigit():
+                        gal = GalleryAlbum.objects.filter(id=int(row_id)).first()
+                        if gal:
+                            gal.title = title
+                            if title_en:
+                                gal.title_en = title_en
+                            gal.description = desc
+                            if desc_en:
+                                gal.description_en = desc_en
+                            if ev_date:
+                                gal.event_date = ev_date
+                            gal.is_published = is_published
+                            gal.save()
+                            AiTranslationService.auto_translate_gallery_album(gal)
+                            summary['gallery_updated'] += 1
+                            continue
+
+                    # Create new album
+                    new_gal = GalleryAlbum.objects.create(
+                        title=title,
+                        title_en=title_en,
+                        description=desc,
+                        description_en=desc_en,
+                        event_date=ev_date,
+                        is_published=is_published
+                    )
+                    AiTranslationService.auto_translate_gallery_album(new_gal)
+                    summary['gallery_created'] += 1
+                    new_id_updates.append((row_idx, new_gal.id))
+
+                for r_idx, new_id in new_id_updates:
+                    try:
+                        ws_gal.update([[new_id]], f'A{r_idx}')
+                    except Exception as e:
+                        logger.warning(f"Failed to write back new gallery id: {e}")
+        except Exception as e:
+            logger.error(f"Error pulling gallery albums from Google Sheets: {e}")
 
         # Update registry timestamp
         registry = self.config.spreadsheets_registry or {}

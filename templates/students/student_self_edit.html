@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} | SchoolSM{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-0">
+    <!-- Header Navigation -->
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1 rounded-pill small">
+                    <i class="fa-solid fa-user-circle me-1"></i> គណនីផ្ទាល់ខ្លួន
+                </span>
+                <span class="text-muted small">/</span>
+                <span class="text-muted small">កែសម្រួលព័ត៌មានសិស្ស</span>
+            </div>
+            <h2 class="fw-bold mb-1"><i class="fa-solid fa-user-pen text-primary me-2"></i>កែប្រែព័ត៌មានផ្ទាល់ខ្លួន</h2>
+            <p class="text-muted small mb-0">ធ្វើបច្ចុប្បន្នភាពព័ត៌មានទំនាក់ទំនង ទីលំនៅ និងព័ត៌មានអាណាព្យាបាលរបស់អ្នក</p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{% url 'student_detail' student.id %}" class="btn btn-light shadow-xs border">
+                <i class="fa-solid fa-arrow-left me-1"></i> ត្រឡប់ទៅប្រវត្តិរូប
+            </a>
+            {% if request.user.role == 'ADMIN' %}
+            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning px-3 py-2 fw-bold">
+                <i class="fa-solid fa-shield-halved me-1"></i> Admin Preview Mode
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status Alert if Closed -->
+    {% if not is_allowed and request.user.role == 'STUDENT' %}
+    <div class="alert alert-warning border-warning shadow-xs rounded-3 mb-4 d-flex align-items-center gap-3">
+        <div class="fs-2 text-warning"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div>
+            <h5 class="fw-bold mb-1">ការកែប្រែព័ត៌មានត្រូវបានបិទ</h5>
+            <p class="mb-0 text-dark">{{ closed_msg }}</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" class="needs-validation" novalidate>
+        {% csrf_token %}
+
+        <div class="row g-4">
+            <!-- Left Column: Readonly Identity & Photo Upload -->
+            <div class="col-lg-4">
+                <!-- Academic Identity Card (Read-Only) -->
+                <div class="card border shadow-xs rounded-3 mb-4">
+                    <div class="card-header bg-light py-3 border-bottom">
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-lock text-muted me-2"></i>ព័ត៌មានអត្តសញ្ញាណ (មិនអាចកែប្រែបាន)
+                        </h6>
+                    </div>
+                    <div class="card-body text-center p-4">
+                        <!-- Current Photo / Avatar -->
+                        <div class="position-relative d-inline-block mb-3">
+                            {% if student.photo %}
+                                <img id="photoPreview" src="{{ student.photo.url }}" alt="{{ student.khmer_name }}" 
+                                     class="rounded-circle shadow-sm border border-3 border-white" 
+                                     style="width: 120px; height: 120px; object-fit: cover;">
+                            {% elif student.photo_drive_url %}
+                                <img id="photoPreview" src="{{ student.photo_drive_url }}" alt="{{ student.khmer_name }}" 
+                                     class="rounded-circle shadow-sm border border-3 border-white" 
+                                     style="width: 120px; height: 120px; object-fit: cover;"
+                                     onerror="this.src='/static/images/default-avatar.png';">
+                            {% else %}
+                                <div id="photoPlaceholder" class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center shadow-sm border border-3 border-white mx-auto" 
+                                     style="width: 120px; height: 120px; font-size: 40px; font-weight: bold;">
+                                    {{ student.khmer_name|slice:":1"|default:"S" }}
+                                </div>
+                                <img id="photoPreview" src="" alt="Preview" class="rounded-circle shadow-sm border border-3 border-white d-none mx-auto" style="width: 120px; height: 120px; object-fit: cover;">
+                            {% endif %}
+                        </div>
+
+                        <h5 class="fw-bold mb-1 text-dark">{{ student.khmer_name }}</h5>
+                        {% if student.latin_name %}
+                        <p class="text-muted fw-semibold mb-2">{{ student.latin_name }}</p>
+                        {% endif %}
+
+                        <div class="badge bg-primary px-3 py-1.5 rounded-pill mb-3">
+                            <i class="fa-solid fa-id-badge me-1"></i> ID: {{ student.student_id }}
+                        </div>
+
+                        <ul class="list-group list-group-flush text-start small border rounded-2">
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <span class="text-muted">ភេទ (Gender)</span>
+                                <span class="fw-bold">{{ student.get_gender_display|default:student.gender }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <span class="text-muted">ថ្ងៃខែឆ្នាំកំណើត (DOB)</span>
+                                <span class="fw-bold">{{ student.date_of_birth|date:"d/m/Y"|default:"-" }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <span class="text-muted">ថ្នាក់រៀន (Classroom)</span>
+                                <span class="badge bg-info-subtle text-info-emphasis border">{{ student.classroom.name|default:"មិនទាន់ចាត់ថ្នាក់" }}</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-2">
+                                <span class="text-muted">ឆ្នាំសិក្សា (Year)</span>
+                                <span class="fw-bold">{{ student.academic_year.name|default:"-" }}</span>
+                            </li>
+                        </ul>
+
+                        <div class="text-muted small mt-3 fst-italic">
+                            <i class="fa-solid fa-circle-info me-1"></i> ព័ត៌មានអត្តសញ្ញាណ និងថ្នាក់រៀនអាចកែប្រែបានតែដោយរដ្ឋបាលសាលាប៉ុណ្ណោះ។
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Photo and Documents Upload Card -->
+                <div class="card border shadow-xs rounded-3">
+                    <div class="card-header bg-light py-3 border-bottom">
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-camera text-primary me-2"></i>រូបថត និងឯកសារផ្ទាល់ខ្លួន
+                        </h6>
+                    </div>
+                    <div class="card-body p-3">
+                        <!-- Photo File Upload -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">រូបថតសិស្ស (Student Photo)</label>
+                            {{ form.photo }}
+                            {% if form.photo.errors %}
+                            <div class="text-danger small mt-1">{{ form.photo.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text small">ជ្រើសរើសរូបថតទំហំ 4x6 ផ្ទៃខៀវ ឬស (JPG, PNG)</div>
+                        </div>
+
+                        <!-- Photo Google Drive URL -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold small text-dark">តំណភ្ជាប់រូបថត (Google Drive Photo URL)</label>
+                            {{ form.photo_drive_url }}
+                            {% if form.photo_drive_url.errors %}
+                            <div class="text-danger small mt-1">{{ form.photo_drive_url.errors.0 }}</div>
+                            {% endif %}
+                            <div class="form-text small">ប្រសិនបើអ្នកមានរូបថតនៅលើ Google Drive</div>
+                        </div>
+
+                        <!-- Birth Certificate Upload -->
+                        <div class="mb-2">
+                            <label class="form-label fw-bold small text-dark">សំបុត្រកំណើត (Birth Certificate File)</label>
+                            {{ form.birth_certificate }}
+                            {% if form.birth_certificate.errors %}
+                            <div class="text-danger small mt-1">{{ form.birth_certificate.errors.0 }}</div>
+                            {% endif %}
+                            {% if student.birth_certificate %}
+                            <div class="mt-2 small">
+                                <a href="{{ student.birth_certificate.url }}" target="_blank" class="text-primary text-decoration-none">
+                                    <i class="fa-solid fa-file-lines me-1"></i> មើលឯកសារបច្ចុប្បន្ន
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Contact & Parents/Guardian Information Form -->
+            <div class="col-lg-8">
+                <!-- Contact & Address Section -->
+                <div class="card border shadow-xs rounded-3 mb-4">
+                    <div class="card-header bg-light py-3 border-bottom">
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-phone text-success me-2"></i>ព័ត៌មានទំនាក់ទំនង និងទីលំនៅ (Contact & Address)
+                        </h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">លេខទូរស័ព្ទផ្ទាល់ខ្លួន (Student Phone)</label>
+                                {{ form.phone }}
+                                {% if form.phone.errors %}
+                                <div class="text-danger small mt-1">{{ form.phone.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">Telegram Chat ID (ស្រេចចិត្ត)</label>
+                                {{ form.telegram_chat_id }}
+                                {% if form.telegram_chat_id.errors %}
+                                <div class="text-danger small mt-1">{{ form.telegram_chat_id.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-bold small text-dark">ទីកន្លែងកំណើត (Place of Birth)</label>
+                                {{ form.place_of_birth }}
+                                {% if form.place_of_birth.errors %}
+                                <div class="text-danger small mt-1">{{ form.place_of_birth.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label fw-bold small text-dark">អាសយដ្ឋានបច្ចុប្បន្ន (Current Address)</label>
+                                {{ form.current_address }}
+                                {% if form.current_address.errors %}
+                                <div class="text-danger small mt-1">{{ form.current_address.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parents and Guardian Information Section -->
+                <div class="card border shadow-xs rounded-3 mb-4">
+                    <div class="card-header bg-light py-3 border-bottom">
+                        <h6 class="fw-bold mb-0 text-dark">
+                            <i class="fa-solid fa-people-roof text-info me-2"></i>ព័ត៌មានឪពុក ម្តាយ និងអាណាព្យាបាល (Parents & Guardian)
+                        </h6>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Father Info -->
+                        <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-person me-2"></i>ព័ត៌មានឪពុក (Father's Information)</h6>
+                        <div class="row g-3 mb-4 pb-3 border-bottom">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-dark">ឈ្មោះឪពុក (Father Name)</label>
+                                {{ form.father_name }}
+                                {% if form.father_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.father_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-dark">លេខទូរស័ព្ទឪពុក (Father Phone)</label>
+                                {{ form.father_phone }}
+                                {% if form.father_phone.errors %}
+                                <div class="text-danger small mt-1">{{ form.father_phone.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-dark">មុខរបរឪពុក (Father Job)</label>
+                                {{ form.father_job }}
+                                {% if form.father_job.errors %}
+                                <div class="text-danger small mt-1">{{ form.father_job.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Mother Info -->
+                        <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-person-dress me-2"></i>ព័ត៌មានម្តាយ (Mother's Information)</h6>
+                        <div class="row g-3 mb-4 pb-3 border-bottom">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-dark">ឈ្មោះម្តាយ (Mother Name)</label>
+                                {{ form.mother_name }}
+                                {% if form.mother_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.mother_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-dark">លេខទូរស័ព្ទម្តាយ (Mother Phone)</label>
+                                {{ form.mother_phone }}
+                                {% if form.mother_phone.errors %}
+                                <div class="text-danger small mt-1">{{ form.mother_phone.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold small text-dark">មុខរបរម្តាយ (Mother Job)</label>
+                                {{ form.mother_job }}
+                                {% if form.mother_job.errors %}
+                                <div class="text-danger small mt-1">{{ form.mother_job.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Guardian & Emergency Contact -->
+                        <h6 class="fw-bold text-warning-emphasis mb-3"><i class="fa-solid fa-shield-heart me-2"></i>អាណាព្យាបាលជំនួស & ទំនាក់ទំនងបន្ទាន់ (Guardian & Emergency)</h6>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">ឈ្មោះអាណាព្យាបាល (Guardian Name)</label>
+                                {{ form.guardian_name }}
+                                {% if form.guardian_name.errors %}
+                                <div class="text-danger small mt-1">{{ form.guardian_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-dark">លេខទូរស័ព្ទបន្ទាន់ (Emergency Phone)</label>
+                                {{ form.emergency_phone }}
+                                {% if form.emergency_phone.errors %}
+                                <div class="text-danger small mt-1">{{ form.emergency_phone.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Action Buttons -->
+                <div class="card border shadow-xs rounded-3 bg-light">
+                    <div class="card-body p-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+                        <div class="text-muted small">
+                            <i class="fa-solid fa-shield-check text-success me-1"></i> ទិន្នន័យរបស់អ្នកត្រូវបានរក្សាទុកដោយសុវត្ថិភាពក្នុងប្រព័ន្ធ
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="{% url 'student_detail' student.id %}" class="btn btn-outline-secondary px-4">
+                                <i class="fa-solid fa-xmark me-1"></i> បោះបង់ (Cancel)
+                            </a>
+                            <button type="submit" class="btn btn-primary px-4 fw-bold shadow-xs">
+                                <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកព័ត៌មាន (Save Changes)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const photoInput = document.querySelector('input[name="photo"]');
+    const photoPreview = document.getElementById('photoPreview');
+    const photoPlaceholder = document.getElementById('photoPlaceholder');
+
+    if (photoInput && photoPreview) {
+        photoInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    photoPreview.src = e.target.result;
+                    photoPreview.classList.remove('d-none');
+                    if (photoPlaceholder) {
+                        photoPlaceholder.classList.add('d-none');
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -56,6 +56,8 @@ urlpatterns = [
     path('reports/moeys-individual-roster/export-excel/', views.moeys_individual_student_roster_export_excel, name='moeys_individual_student_roster_export_excel'),
     path('reports/moeys-individual-roster/print/', views.moeys_individual_student_roster_print, name='moeys_individual_student_roster_print'),
 
+    path('my-profile/edit/', views.student_self_edit, name='student_self_edit'),
+    path('api/toggle-self-update/', views.api_toggle_student_self_update, name='api_toggle_student_self_update'),
     path('<int:pk>/', views.student_detail, name='student_detail'),
     path('<int:pk>/edit/', views.student_edit, name='student_edit'),
     path('<int:pk>/delete/', views.student_delete, name='student_delete'),

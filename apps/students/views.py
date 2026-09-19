@@ -26,6 +26,7 @@ from apps.finance.models import Invoice
 from apps.extras.models import BookBorrowing
 
 @login_required
+@role_required(['ADMIN', 'TEACHER'])
 def student_list(request):
     from apps.academics.utils import get_active_academic_year
     active_year = get_active_academic_year(request)
@@ -97,6 +98,11 @@ def student_list(request):
     if scholarship_filter:
         students = students.filter(scholarship_type=scholarship_filter)
 
+    from apps.examinations.services import get_exam_at_risk_students
+    at_risk_map = get_exam_at_risk_students(academic_year=active_year, threshold_sessions=8)
+    at_risk_student_ids = set(at_risk_map.keys())
+    at_risk_count = Student.objects.filter(id__in=at_risk_student_ids, status=Student.Status.ACTIVE, is_exam_suspended=False).count()
+
     if exam_status_filter == 'disqualified':
         students = students.filter(
             Q(is_exam_suspended=True) |
@@ -104,6 +110,12 @@ def student_list(request):
         )
     elif exam_status_filter == 'eligible':
         students = students.filter(
+            status=Student.Status.ACTIVE,
+            is_exam_suspended=False
+        )
+    elif exam_status_filter == 'at_risk':
+        students = students.filter(
+            id__in=at_risk_student_ids,
             status=Student.Status.ACTIVE,
             is_exam_suspended=False
         )
@@ -143,6 +155,10 @@ def student_list(request):
             students_page = paginator.page(paginator.num_pages)
         is_paginated = paginator.num_pages > 1
 
+    for s in students_page:
+        s.is_exam_at_risk = (s.id in at_risk_student_ids and not s.is_exam_suspended and s.status == Student.Status.ACTIVE)
+        s.exam_at_risk_info = at_risk_map.get(s.id, {})
+
     return render(request, 'students/student_list.html', {
         'students': students_page,
         'paginator': paginator,
@@ -158,6 +174,8 @@ def student_list(request):
         'selected_status': status_filter,
         'selected_scholarship': scholarship_filter,
         'selected_exam_status': exam_status_filter,
+        'at_risk_count': at_risk_count,
+        'at_risk_map': at_risk_map,
         'available_statuses': available_statuses,
         'exam_reasons': Student.ExamExclusionReason.choices,
         'total_count': total_count,
@@ -1206,10 +1224,10 @@ def api_preview_student_id_pattern(request):
     })
 
 
-# ----------------- SCHOLARSHIP / FEE TYPES CRUD (ADMIN ONLY) -----------------
+# ----------------- SCHOLARSHIP / FEE TYPES CRUD (ADMIN & ACCOUNTANT) -----------------
 
 @login_required
-@role_required(['ADMIN'])
+@role_required(['ADMIN', 'ACCOUNTANT'])
 def scholarship_type_list(request):
     """Lists all configurable Scholarship / Fee Types for Admin with student stats"""
     from .forms import ScholarshipTypeForm
@@ -1231,7 +1249,7 @@ def scholarship_type_list(request):
 
 
 @login_required
-@role_required(['ADMIN'])
+@role_required(['ADMIN', 'ACCOUNTANT'])
 def scholarship_type_save(request, pk=None):
     """Create or update a Scholarship / Fee Type"""
     from .forms import ScholarshipTypeForm
@@ -1249,7 +1267,7 @@ def scholarship_type_save(request, pk=None):
 
 
 @login_required
-@role_required(['ADMIN'])
+@role_required(['ADMIN', 'ACCOUNTANT'])
 def scholarship_type_delete(request, pk):
     """Delete a Scholarship / Fee Type if not in active use"""
     st = get_object_or_404(ScholarshipType, pk=pk)
@@ -1730,6 +1748,9 @@ def api_bulk_grade_registration(request):
 
 @login_required
 def student_detail(request, pk):
+    if getattr(request.user, 'role', '') == User.Role.ACCOUNTANT:
+        messages.error(request, "លោកអ្នកមិនមានសិទ្ធិចូលមើលទំព័រនេះទេ! (Access Denied)")
+        return redirect('dashboard_redirect')
     student = get_object_or_404(Student.objects.select_related('classroom', 'academic_year', 'user'), pk=pk)
     
     # Check permission for student role: can only view own profile
@@ -1756,6 +1777,16 @@ def student_detail(request, pk):
     present_att = StudentAttendance.objects.filter(student=student, status='PRESENT').count()
     attendance_rate = round((present_att / total_att) * 100, 1) if total_att > 0 else 100.0
 
+    from apps.accounts.models import SchoolProfile
+    school_profile = SchoolProfile.get_settings()
+    allow_student_self_update, student_update_closed_message = school_profile.is_student_self_update_allowed()
+    is_student_owner = (
+        request.user.is_authenticated and (
+            (hasattr(request.user, 'student_profile') and request.user.student_profile.id == student.id) or
+            (student.user_id and student.user_id == request.user.id)
+        )
+    )
+
     return render(request, 'students/student_detail.html', {
         'student': student,
         'attendances': attendances,
@@ -1764,15 +1795,133 @@ def student_detail(request, pk):
         'borrowings': borrowings,
         'attendance_rate': attendance_rate,
         'total_att': total_att,
+        'is_student_owner': is_student_owner,
+        'allow_student_self_update': allow_student_self_update,
+        'student_update_closed_message': student_update_closed_message,
+    })
+
+
+@login_required
+def student_self_edit(request):
+    """
+    Dedicated self-update view for logged-in students to update their own profile.
+    Permission is controlled by SchoolProfile.allow_student_self_update.
+    Students can ONLY update their own record and allowed biographical/contact fields.
+    """
+    from apps.accounts.models import SchoolProfile, User
+    from .forms import StudentSelfUpdateForm
+
+    student = None
+    if request.user.role == User.Role.STUDENT:
+        if hasattr(request.user, 'student_profile') and request.user.student_profile:
+            student = request.user.student_profile
+        else:
+            student = Student.objects.filter(user=request.user).first()
+        if not student:
+            from apps.examinations.services import resolve_student_and_children_for_user
+            student, _ = resolve_student_and_children_for_user(request.user)
+    elif request.user.role == User.Role.ADMIN:
+        student_id = request.GET.get('student_id')
+        if student_id:
+            student = get_object_or_404(Student, pk=student_id)
+        else:
+            student = Student.objects.first()
+    else:
+        messages.error(request, "ទំព័រនេះសម្រាប់តែសិស្សានុសិស្សក្នុងការកែប្រែព័ត៌មានផ្ទាល់ខ្លួនប៉ុណ្ណោះ!")
+        return redirect('dashboard_redirect')
+
+    if not student:
+        messages.error(request, "រកមិនឃើញព័ត៌មានសិស្សដែលភ្ជាប់ជាមួយគណនីរបស់លោកអ្នកទេ!")
+        return redirect('student_dashboard')
+
+    school_profile = SchoolProfile.get_settings()
+    is_allowed, closed_msg = school_profile.is_student_self_update_allowed()
+
+    # Enforce Admin toggle
+    if request.user.role == User.Role.STUDENT and not is_allowed:
+        messages.error(request, closed_msg)
+        return redirect('student_detail', pk=student.pk)
+
+    if request.method == 'POST':
+        form = StudentSelfUpdateForm(request.POST, request.FILES, instance=student)
+        if form.is_valid():
+            with transaction.atomic():
+                saved_student = form.save()
+                # Keep user phone synced if updated
+                if saved_student.phone and (not request.user.phone or request.user.phone != saved_student.phone):
+                    request.user.phone = saved_student.phone
+                    request.user.save(update_fields=['phone'])
+            messages.success(request, f"🎉 បានកែប្រែ និងធ្វើបច្ចុប្បន្នភាពព័ត៌មានផ្ទាល់ខ្លួនរបស់ {student.khmer_name} ជោគជ័យ!")
+            return redirect('student_detail', pk=student.pk)
+        else:
+            messages.error(request, "សូមពិនិត្យមើលទិន្នន័យដែលបានបញ្ចូលឡើងវិញ!")
+    else:
+        form = StudentSelfUpdateForm(instance=student)
+
+    return render(request, 'students/student_self_edit.html', {
+        'form': form,
+        'student': student,
+        'school_profile': school_profile,
+        'is_allowed': is_allowed,
+        'closed_msg': closed_msg,
+        'title': f'កែប្រែព័ត៌មានផ្ទាល់ខ្លួន - {student.khmer_name}'
     })
 
 
 @login_required
 @role_required(['ADMIN'])
-def student_edit(request, pk):
+@require_POST
+def api_toggle_student_self_update(request):
+    """
+    AJAX endpoint for Admin to toggle student self-update permission ON or OFF.
+    """
     from apps.accounts.models import SchoolProfile
+
+    sp = SchoolProfile.get_settings()
+    action = request.POST.get('action', '').strip().lower()
+    
+    if action == 'open':
+        sp.allow_student_self_update = True
+    elif action == 'close':
+        sp.allow_student_self_update = False
+    elif 'is_allowed' in request.POST:
+        val = request.POST.get('is_allowed')
+        sp.allow_student_self_update = str(val).lower() in ['true', '1', 'on', 'yes']
+    else:
+        sp.allow_student_self_update = not sp.allow_student_self_update
+
+    msg = request.POST.get('closed_message')
+    if msg is not None and msg.strip():
+        sp.student_update_closed_message = msg.strip()
+
+    sp.save()
+
+    status_str = "បើកដំណើរការ (OPEN)" if sp.allow_student_self_update else "បានបិទ (DISABLED)"
+    return JsonResponse({
+        'success': True,
+        'allow_student_self_update': sp.allow_student_self_update,
+        'status_str': status_str,
+        'message': f"បានកំណត់សិទ្ធិកែប្រែព័ត៌មានសិស្ស៖ {status_str} ដោយជោគជ័យ!"
+    })
+
+
+@login_required
+def student_edit(request, pk):
+    from apps.accounts.models import SchoolProfile, User
     from apps.academics.models import GradeEnrollmentOption
     from .forms import MoeysIndividualStudentForm
+
+    student = get_object_or_404(Student, pk=pk)
+
+    # Permission check: If student role, they can only edit their own profile and if permitted by admin
+    if request.user.role == User.Role.STUDENT:
+        if (not hasattr(request.user, 'student_profile') or request.user.student_profile.id != student.id) and student.user_id != request.user.id:
+            messages.error(request, "លោកអ្នកអាចកែប្រែបានតែព័ត៌មានផ្ទាល់ខ្លួនប៉ុណ្ណោះ!")
+            return redirect('student_dashboard')
+        return redirect('student_self_edit')
+    elif request.user.role != User.Role.ADMIN:
+        messages.error(request, "លោកអ្នកគ្មានសិទ្ធិកែប្រែព័ត៌មានសិស្សឡើយ!")
+        return redirect('student_list')
 
     student = get_object_or_404(Student, pk=pk)
     school_profile = SchoolProfile.get_settings()
@@ -2587,7 +2736,7 @@ def student_import(request):
 
 
 @login_required
-@role_required(['ADMIN', 'ACCOUNTANT'])
+@role_required(['ADMIN'])
 def download_student_template_excel(request):
     """
     Generates a beautifully formatted sample Excel template for importing students
@@ -2679,7 +2828,7 @@ def download_student_template_excel(request):
 
 
 @login_required
-@role_required(['ADMIN', 'ACCOUNTANT'])
+@role_required(['ADMIN'])
 def download_student_template_csv(request):
     """
     Generates a UTF-8 with BOM CSV sample template for importing students
@@ -2815,6 +2964,9 @@ def api_set_student_exam_status(request, pk):
                 'message': msg
             })
         messages.success(request, msg)
+        next_url = request.POST.get('next')
+        if next_url:
+            return redirect(next_url)
         return redirect('student_list')
 
     return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
@@ -3696,7 +3848,7 @@ def _calculate_age_grade_matrix(academic_year, calc_method='calendar', status_fi
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def student_age_grade_statistics(request):
     """
     View to display the MoEYS Educational Statistics Matrix: Students by Age and Grade Level.
@@ -3834,7 +3986,7 @@ def student_age_grade_statistics(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def export_student_age_grade_excel(request):
     """
     Exports full MoEYS Age-Grade Statistics in multi-sheet Excel format (.xlsx)
@@ -4183,7 +4335,7 @@ def export_student_age_grade_excel(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def api_student_age_grade_drilldown(request):
     """
     AJAX endpoint that returns the list of students matching a clicked matrix cell.
@@ -4931,7 +5083,7 @@ def _get_student_age_roster_data(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def student_age_custom_roster(request):
     """
     Interactive web view for the customizable MoEYS student age roster report.
@@ -4942,7 +5094,7 @@ def student_age_custom_roster(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def student_age_custom_roster_export_excel(request):
     """
     Downloads an Excel (.xlsx) workbook strictly styled according to the selected MoEYS template:
@@ -5208,7 +5360,7 @@ def student_age_custom_roster_export_excel(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def student_age_custom_roster_print(request):
     """
     Dedicated printable view with clean typography and @page formatting for instant
@@ -5518,7 +5670,7 @@ def _get_moeys_individual_student_roster_data(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def moeys_individual_student_roster(request):
     """
     Interactive web view for MoEYS Individual Student Profile Roster (សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ).
@@ -5753,7 +5905,7 @@ def moeys_individual_student_roster_upload(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def moeys_individual_student_roster_export_excel(request):
     """
     Generates downloadable Excel (.xlsx) matching E:\SchoolSM\សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ.xlsx
@@ -5952,7 +6104,7 @@ def moeys_individual_student_roster_export_excel(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def moeys_individual_student_roster_print(request):
     """
     Dedicated printable view with clean typography and @page formatting adhering
@@ -6437,7 +6589,7 @@ def student_verification_submit(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def student_verification_logs(request):
     """View and export student verification and confirmation history logs"""
     from .models import StudentVerificationLog, StudentVerificationCampaign

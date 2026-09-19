@@ -24,6 +24,7 @@ urlpatterns = [
     # Photo Gallery & Albums
     path('portal/cms/gallery/', views.cms_gallery_manager, name='website_gallery_manager'),
     path('portal/cms/gallery/create/', views.cms_gallery_create, name='website_gallery_create'),
+    path('portal/cms/gallery/album/edit/<int:pk>/', views.cms_gallery_edit, name='website_gallery_album_edit'),
     path('portal/cms/gallery/<int:pk>/upload/', views.cms_gallery_upload, name='website_gallery_upload'),
     path('portal/cms/gallery/photo/delete/<int:pk>/', views.cms_gallery_photo_delete, name='website_gallery_photo_delete'),
     path('portal/cms/gallery/album/delete/<int:pk>/', views.cms_gallery_album_delete, name='website_gallery_album_delete'),

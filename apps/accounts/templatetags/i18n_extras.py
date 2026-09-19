@@ -18,7 +18,15 @@ def lang_switch(context, kh_text, en_text=None):
     """
     current_lang = context.get('current_language', 'km')
     if current_lang == 'en':
-        return en_text if (en_text is not None and str(en_text).strip() != '') else kh_text
+        if en_text is not None and str(en_text).strip() != '':
+            return en_text
+        if kh_text and str(kh_text).strip():
+            from apps.tools.ai_translation_service import OFFLINE_DICTIONARY, AiTranslationService
+            clean_kh = str(kh_text).strip()
+            if clean_kh in OFFLINE_DICTIONARY:
+                return OFFLINE_DICTIONARY[clean_kh]
+            return AiTranslationService._offline_fallback_translate(clean_kh)
+        return en_text if en_text is not None else kh_text
     return kh_text
 
 @register.simple_tag(takes_context=True)
@@ -41,11 +49,15 @@ def get_bilingual(context, obj, field_name):
             if khmer_count == 0 or (khmer_count / max(len(str(val_en).strip()), 1)) < 0.25:
                 return val_en
 
-        # If val_en is missing or has excessive Khmer, attempt AI translation on the fly
+        # If val_en is missing or has excessive Khmer, attempt fast translation on the fly
         raw_kh = getattr(obj, field_name, None) or getattr(obj, f"{field_name}_kh", None) or ''
         if raw_kh and str(raw_kh).strip():
-            from apps.tools.ai_translation_service import AiTranslationService
-            auto_en = AiTranslationService.translate_khmer_to_english(str(raw_kh).strip(), context=f"{field_name} translation")
+            from apps.tools.ai_translation_service import OFFLINE_DICTIONARY, AiTranslationService
+            clean_kh = str(raw_kh).strip()
+            if clean_kh in OFFLINE_DICTIONARY:
+                auto_en = OFFLINE_DICTIONARY[clean_kh]
+            else:
+                auto_en = AiTranslationService._offline_fallback_translate(clean_kh)
             if auto_en and not re.search(r'[\u1780-\u17FF]', auto_en):
                 try:
                     setattr(obj, f"{field_name}_en", auto_en)

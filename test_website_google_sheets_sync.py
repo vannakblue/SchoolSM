@@ -10,7 +10,7 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 from apps.accounts.models import GoogleSheetsConfig, SchoolProfile
 from apps.extras.models import Announcement
-from apps.website.models import NewsArticle, ContactMessage
+from apps.website.models import NewsArticle, ContactMessage, GalleryAlbum
 from apps.website.website_google_sheets_sync import WebsiteGoogleSheetsSync
 
 User = get_user_model()
@@ -58,6 +58,15 @@ class TestWebsiteGoogleSheetsSync(TestCase):
             is_read=False
         )
 
+        # Sample Gallery Album
+        self.album = GalleryAlbum.objects.create(
+            title="ការប្រកួតកីឡា",
+            title_en="Sports Tournament",
+            description="ពិពណ៌នាកីឡា",
+            description_en="Sports description",
+            is_published=True
+        )
+
     @patch.object(WebsiteGoogleSheetsSync, 'get_or_create_website_spreadsheet')
     def test_push_to_sheets(self, mock_get_spreadsheet):
         mock_sh = MagicMock()
@@ -74,27 +83,30 @@ class TestWebsiteGoogleSheetsSync(TestCase):
         self.assertGreaterEqual(res['news_count'], 1)
         self.assertGreaterEqual(res['profile_fields_count'], 10)
         self.assertGreaterEqual(res['contact_messages_count'], 1)
-        self.assertEqual(syncer._prepare_worksheet.call_count, 4)
+        self.assertGreaterEqual(res['gallery_albums_count'], 1)
+        self.assertEqual(syncer._prepare_worksheet.call_count, 5)
 
+    @patch('apps.tools.ai_translation_service.AiTranslationService._translate_with_gemini', return_value="")
+    @patch('apps.tools.ai_translation_service.AiTranslationService._batch_translate_with_gemini', return_value={})
     @patch.object(WebsiteGoogleSheetsSync, 'get_or_create_website_spreadsheet')
-    def test_pull_from_sheets_updates_and_creates(self, mock_get_spreadsheet):
+    def test_pull_from_sheets_updates_and_creates(self, mock_get_spreadsheet, mock_batch_ai, mock_ai):
         mock_sh = MagicMock()
         mock_get_spreadsheet.return_value = mock_sh
 
-        # 1. Mock Announcement Sheet rows: 1 update, 1 new create
+        # 1. Mock Announcement Sheet rows: 1 update, 1 new create (10 columns)
         mock_ws_ann = MagicMock()
         mock_ws_ann.get_all_values.return_value = [
             WebsiteGoogleSheetsSync.ANNOUNCEMENT_HEADERS,
-            [str(self.ann.id), "2026-09-01", "ដំណឹងប្រឡងឆមាសទី១ (Updated)", "EXAM_SCHEDULE", "ALL", "URGENT", "កាលវិភាគថ្មី", "TRUE"],
-            ["", "2026-09-02", "សេចក្តីជូនដំណឹងថ្មីពី Sheets", "GENERAL", "ALL", "NORMAL", "ខ្លឹមសារបង្កើតពី Sheets", "TRUE"]
+            [str(self.ann.id), "2026-09-01", "ដំណឹងប្រឡងឆមាសទី១ (Updated)", "Exam Announcement", "EXAM_SCHEDULE", "ALL", "URGENT", "កាលវិភាគថ្មី", "New schedule", "TRUE"],
+            ["", "2026-09-02", "សេចក្តីជូនដំណឹងថ្មីពី Sheets", "New Announcement", "GENERAL", "ALL", "NORMAL", "ខ្លឹមសារបង្កើតពី Sheets", "Content from sheets", "TRUE"]
         ]
 
-        # 2. Mock News Sheet rows: 1 update, 1 new create
+        # 2. Mock News Sheet rows: 1 update, 1 new create (12 columns)
         mock_ws_news = MagicMock()
         mock_ws_news.get_all_values.return_value = [
             WebsiteGoogleSheetsSync.NEWS_HEADERS,
-            [str(self.news.id), "2026-09-01", "ពិធីសម្ពោធបណ្ណាល័យថ្មី (Updated)", "EVENT", "សង្ខេបថ្មី", "ខ្លឹមសារថ្មី", "", "TRUE", "TRUE"],
-            ["", "2026-09-02", "ព័ត៌មានបង្កើតពី Google Sheets", "SPORTS", "កីឡាសាលា", "ការប្រកួតកីឡាប្រចាំឆ្នាំ", "", "FALSE", "TRUE"]
+            [str(self.news.id), "2026-09-01", "ពិធីសម្ពោធបណ្ណាល័យថ្មី (Updated)", "Library Inauguration", "EVENT", "សង្ខេបថ្មី", "New excerpt", "ខ្លឹមសារថ្មី", "New content", "", "TRUE", "TRUE"],
+            ["", "2026-09-02", "ព័ត៌មានបង្កើតពី Google Sheets", "News from Sheets", "SPORTS", "កីឡាសាលា", "Sports", "ការប្រកួតកីឡាប្រចាំឆ្នាំ", "Annual tournament", "", "FALSE", "TRUE"]
         ]
 
         # 3. Mock School Profile Sheet rows
@@ -112,11 +124,20 @@ class TestWebsiteGoogleSheetsSync(TestCase):
             [str(self.contact.id), "2026-09-01", "សុខ ចាន់", "012345678", "sokchan@example.com", "សាកសួរ", "សារ", "TRUE"]
         ]
 
+        # 5. Mock Gallery Albums Sheet rows: 1 update, 1 new create (7 columns)
+        mock_ws_gal = MagicMock()
+        mock_ws_gal.get_all_values.return_value = [
+            WebsiteGoogleSheetsSync.GALLERY_HEADERS,
+            [str(self.album.id), "2026-09-01", "ការប្រកួតកីឡា (Updated)", "Sports Tournament (Updated)", "ពិពណ៌នាកីឡាថ្មី", "New sports desc", "TRUE"],
+            ["", "2026-09-02", "ពិធីចែកសញ្ញាបត្រ", "", "រូបភាពចែកសញ្ញាបត្រ", "", "TRUE"]
+        ]
+
         def get_worksheet_side_effect(name):
             if name == "Announcements": return mock_ws_ann
             if name == "News": return mock_ws_news
             if name == "School_Profile": return mock_ws_prof
             if name == "Contact_Messages": return mock_ws_cont
+            if name == "Gallery_Albums": return mock_ws_gal
             return MagicMock()
 
         mock_sh.worksheet.side_effect = get_worksheet_side_effect
@@ -131,6 +152,8 @@ class TestWebsiteGoogleSheetsSync(TestCase):
         self.assertEqual(summary['news_created'], 1)
         self.assertTrue(summary['profile_updated'])
         self.assertEqual(summary['contact_updated'], 1)
+        self.assertEqual(summary['gallery_updated'], 1)
+        self.assertEqual(summary['gallery_created'], 1)
 
         # Verify DB changed
         self.ann.refresh_from_db()
@@ -139,6 +162,15 @@ class TestWebsiteGoogleSheetsSync(TestCase):
 
         self.news.refresh_from_db()
         self.assertEqual(self.news.title, "ពិធីសម្ពោធបណ្ណាល័យថ្មី (Updated)")
+
+        self.album.refresh_from_db()
+        self.assertEqual(self.album.title, "ការប្រកួតកីឡា (Updated)")
+        self.assertEqual(self.album.title_en, "Sports Tournament (Updated)")
+
+        # Verify new album was auto-translated into English
+        created_gal = GalleryAlbum.objects.filter(title="ពិធីចែកសញ្ញាបត្រ").first()
+        self.assertIsNotNone(created_gal)
+        self.assertEqual(created_gal.title_en, "Graduation Ceremony")
 
         profile = SchoolProfile.get_settings()
         self.assertEqual(profile.motto, "វិន័យ គុណធម៌ វិជ្ជាជីវៈ (Updated From Sheet)")

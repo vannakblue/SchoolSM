@@ -9,7 +9,7 @@
         <p class="text-muted small mb-0">គ្រប់គ្រងស្តុកសៀវភៅពុម្ព ឯកសណ្ឋានសាលា និងសម្ភារៈសិក្សាផ្សេងៗ</p>
     </div>
     <div class="d-flex gap-2">
-        {% if is_admin or is_accountant %}
+        {% if is_admin %}
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addItemModal">
             <i class="fa-solid fa-plus me-1"></i> បន្ថែមមុខទំនិញថ្មី
         </button>
@@ -87,7 +87,7 @@
 </div>
 
 <!-- Modal: Add Item -->
-{% if is_admin or is_accountant %}
+{% if is_admin %}
 <div class="modal fade" id="addItemModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">

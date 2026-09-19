@@ -1,15 +1,17 @@
 {% extends 'website/base_website.html' %}
+{% load static %}
+{% load i18n_extras %}
 
-{% block title %}{{ album.title }} | វិចិត្រសាលរូបភាព{% endblock %}
+{% block title %}{% get_bilingual album 'title' %} | {% lang_switch "វិចិត្រសាលរូបភាព" "Photo Gallery" %}{% endblock %}
 
 {% block content %}
 <div class="bg-light py-3 border-bottom">
     <div class="container">
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0 small">
-                <li class="breadcrumb-item"><a href="{% url 'website_home' %}" class="text-decoration-none">ទំព័រដើម</a></li>
-                <li class="breadcrumb-item"><a href="{% url 'website_gallery_list' %}" class="text-decoration-none">វិចិត្រសាល</a></li>
-                <li class="breadcrumb-item active text-truncate" style="max-width: 300px;" aria-current="page">{{ album.title }}</li>
+                <li class="breadcrumb-item"><a href="{% url 'website_home' %}" class="text-decoration-none">{% lang_switch "ទំព័រដើម" "Home" %}</a></li>
+                <li class="breadcrumb-item"><a href="{% url 'website_gallery_list' %}" class="text-decoration-none">{% lang_switch "វិចិត្រសាល" "Gallery" %}</a></li>
+                <li class="breadcrumb-item active text-truncate" style="max-width: 300px;" aria-current="page">{% get_bilingual album 'title' %}</li>
             </ol>
         </nav>
     </div>
@@ -20,17 +22,18 @@
         <!-- Album Info Header -->
         <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom gap-3">
             <div>
-                <h2 class="fw-bold mb-1 text-dark">{{ album.title }}</h2>
+                <h2 class="fw-bold mb-1 text-dark">{% get_bilingual album 'title' %}</h2>
                 <div class="d-flex align-items-center gap-3 text-muted small">
                     <span><i class="fa-regular fa-calendar me-1"></i>{{ album.event_date|default:album.created_at|date:"d F Y" }}</span>
-                    <span><i class="fa-solid fa-camera me-1 text-success"></i>រូបថតសរុប៖ {{ photos.count }} សន្លឹក</span>
+                    <span><i class="fa-solid fa-camera me-1 text-success"></i>{% lang_switch "រូបថតសរុប៖" "Total Photos:" %} {{ photos.count }} {% lang_switch "សន្លឹក" "photos" %}</span>
                 </div>
-                {% if album.description %}
-                <p class="text-secondary mt-2 mb-0">{{ album.description }}</p>
+                {% get_bilingual album 'description' as alb_desc %}
+                {% if alb_desc %}
+                <p class="text-secondary mt-2 mb-0">{{ alb_desc }}</p>
                 {% endif %}
             </div>
             <a href="{% url 'website_gallery_list' %}" class="btn btn-outline-secondary rounded-pill px-4">
-                <i class="fa-solid fa-arrow-left me-2"></i>ត្រឡប់ទៅអាល់ប៊ុមទាំងអស់
+                <i class="fa-solid fa-arrow-left me-2"></i>{% lang_switch "ត្រឡប់ទៅអាល់ប៊ុមទាំងអស់" "Back to All Albums" %}
             </a>
         </div>
 
@@ -55,7 +58,7 @@
             {% else %}
                 <div class="col-12">
                     <div class="alert alert-light border text-center py-5 rounded-4">
-                        <p class="text-muted mb-0">មិនទាន់មានរូបភាពក្នុងអាល់ប៊ុមនេះនៅឡើយទេ។</p>
+                        <p class="text-muted mb-0">{% lang_switch "មិនទាន់មានរូបភាពក្នុងអាល់ប៊ុមនេះនៅឡើយទេ។" "No photos in this album yet." %}</p>
                     </div>
                 </div>
             {% endif %}

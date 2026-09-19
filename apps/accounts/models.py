@@ -528,6 +528,12 @@ class SchoolProfile(models.Model):
         blank=True,
         verbose_name="កម្រិតសិក្សា / Education Levels"
     )
+    education_levels_en = models.CharField(
+        max_length=255,
+        default="Secondary & High School",
+        blank=True,
+        verbose_name="កម្រិតសិក្សា / Education Levels (English)"
+    )
     date_format = models.CharField(
         max_length=50,
         default="dd-mm-yyyy",
@@ -701,6 +707,30 @@ class SchoolProfile(models.Model):
         verbose_name="សារជូនដំណឹងពេលបិទការចុះឈ្មោះ / Closed Notice Message"
     )
 
+    # Student Self-Profile Update Permission (Admin Controlled for Web Portal & Mobile App)
+    allow_student_self_update = models.BooleanField(
+        default=True,
+        verbose_name="អនុញ្ញាតឱ្យសិស្សកែប្រែព័ត៌មានផ្ទាល់ខ្លួន / Allow Student Self-Update",
+        help_text="បើក ឬ បិទ សិទ្ធិឱ្យសិស្សអាចចូលកែប្រែព័ត៌មានផ្ទាល់ខ្លួនរបស់ពួកគេបាននៅលើ Web Portal និង Mobile App (សិស្សអាចកែបានតែព័ត៌មានផ្ទាល់ខ្លួនរបស់ពួកគេប៉ុណ្ណោះ)"
+    )
+    student_update_closed_message = models.CharField(
+        max_length=500,
+        blank=True,
+        default="ការកែប្រែព័ត៌មានសិស្សត្រូវបានបិទជាបណ្តោះអាសន្នដោយរដ្ឋបាលសាលា។ ប្រសិនបើមានព័ត៌មានចាំបាច់ត្រូវកែប្រែ សូមទាក់ទងមកការិយាល័យរដ្ឋបាលសាលា។",
+        verbose_name="សារជូនដំណឹងពេលបិទការកែប្រែព័ត៌មានសិស្ស / Student Update Closed Message"
+    )
+
+    def is_student_self_update_allowed(self):
+        """
+        Determines whether student profile self-update is currently permitted by Admin.
+        Used by both Web Portal and Mobile App.
+        Returns: (allowed: bool, reason: str)
+        """
+        if not self.allow_student_self_update:
+            msg = self.student_update_closed_message or "ការកែប្រែព័ត៌មានផ្ទាល់ខ្លួនត្រូវបានបិទដោយរដ្ឋបាលសាលា។"
+            return False, msg
+        return True, "ការកែប្រែព័ត៌មានផ្ទាល់ខ្លួនត្រូវបានអនុញ្ញាត។"
+
     def is_student_registration_allowed(self):
         """
         Determines whether student registration is currently permitted by Admin.
@@ -770,16 +800,34 @@ class SchoolProfile(models.Model):
         default="ក្រសួងអប់រំ យុវជន និងកីឡា",
         verbose_name="ក្រសួងសាមី / Ministry Name"
     )
+    ministry_name_en = models.CharField(
+        max_length=200,
+        default="Ministry of Education, Youth and Sport",
+        blank=True,
+        verbose_name="ក្រសួងសាមី / Ministry Name (English)"
+    )
     poe_name = models.CharField(
         max_length=200,
         default="មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានីភ្នំពេញ",
         verbose_name="មន្ទីរអប់រំ / Provincial/Municipal Dept of Education (PoE)"
+    )
+    poe_name_en = models.CharField(
+        max_length=200,
+        default="Kandal Provincial Department of Education",
+        blank=True,
+        verbose_name="មន្ទីរអប់រំ / PoE (English)"
     )
     doe_name = models.CharField(
         max_length=200,
         default="ការិយាល័យអប់រំ យុវជន និងកីឡា ខណ្ឌដូនពេញ",
         blank=True,
         verbose_name="ការិយាល័យអប់រំ / District Office of Education (DoE)"
+    )
+    doe_name_en = models.CharField(
+        max_length=200,
+        default="Kandal Stueng District Office of Education",
+        blank=True,
+        verbose_name="ការិយាល័យអប់រំ / DoE (English)"
     )
 
     # Geographic Location & GPS / Google Maps
@@ -803,6 +851,18 @@ class SchoolProfile(models.Model):
         default="ភូមិ១",
         blank=True,
         verbose_name="ភូមិ / Village"
+    )
+    village_en = models.CharField(
+        max_length=100,
+        default="Svay Ming Village",
+        blank=True,
+        verbose_name="ភូមិ / Village (English)"
+    )
+    commune_en = models.CharField(
+        max_length=100,
+        default="Barkou Commune",
+        blank=True,
+        verbose_name="ឃុំ/សង្កាត់ / Commune (English)"
     )
     street_address = models.CharField(
         max_length=255,

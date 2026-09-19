@@ -52,7 +52,9 @@ class NewsArticle(models.Model):
 
 class GalleryAlbum(models.Model):
     title = models.CharField(max_length=200, verbose_name="ឈ្មោះអាល់ប៊ុម / Album Title")
+    title_en = models.CharField(max_length=200, blank=True, null=True, verbose_name="ឈ្មោះអាល់ប៊ុម (English) / English Album Title")
     description = models.TextField(blank=True, null=True, verbose_name="ការពិពណ៌នា / Description")
+    description_en = models.TextField(blank=True, null=True, verbose_name="ការពិពណ៌នា (English) / English Description")
     cover_image = models.ImageField(upload_to='website/gallery/covers/', blank=True, null=True, verbose_name="រូបភាពតំណាង / Cover Photo")
     event_date = models.DateField(blank=True, null=True, verbose_name="កាលបរិច្ឆេទកម្មវិធី / Event Date")
     is_published = models.BooleanField(default=True, verbose_name="ផ្សាយជាសាធារណៈ / Is Published")
@@ -62,6 +64,36 @@ class GalleryAlbum(models.Model):
         ordering = ['-event_date', '-created_at']
         verbose_name = "អាល់ប៊ុមរូបភាព / Gallery Album"
         verbose_name_plural = "អាល់ប៊ុមរូបភាពទាំងអស់ / Gallery Albums"
+
+    def get_title(self, lang='km'):
+        if lang == 'en' and self.title_en:
+            return self.title_en
+        return self.title
+
+    def get_description(self, lang='km'):
+        if lang == 'en' and self.description_en:
+            return self.description_en
+        return self.description or ''
+
+    def save(self, *args, **kwargs):
+        # Auto-translate title to English if missing
+        if not self.title_en and self.title:
+            try:
+                from apps.tools.ai_translation_service import AiTranslationService
+                auto_en = AiTranslationService.translate_khmer_to_english(self.title, context="Gallery Album Title")
+                if auto_en:
+                    self.title_en = auto_en
+            except Exception:
+                pass
+        if not self.description_en and self.description:
+            try:
+                from apps.tools.ai_translation_service import AiTranslationService
+                auto_desc = AiTranslationService.translate_khmer_to_english(self.description, context="Gallery Album Description")
+                if auto_desc:
+                    self.description_en = auto_desc
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title

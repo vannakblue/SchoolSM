@@ -41,7 +41,14 @@
                     </div>
                     <div class="col-sm-8 d-flex flex-column p-3">
                         <div class="d-flex justify-content-between align-items-start mb-1">
-                            <h5 class="fw-bold mb-1 text-dark">{{ album.title }}</h5>
+                            <div>
+                                <h5 class="fw-bold mb-0 text-dark">{{ album.title }}</h5>
+                                {% if album.title_en %}
+                                <div class="text-primary small fw-semibold"><i class="fa-solid fa-language me-1"></i>{{ album.title_en }}</div>
+                                {% else %}
+                                <div class="text-muted small fst-italic"><i class="fa-solid fa-wand-magic-sparkles me-1 text-warning"></i>(នឹងបកប្រែស្វ័យប្រវត្តិដោយ AI)</div>
+                                {% endif %}
+                            </div>
                             <span class="badge {% if album.is_published %}bg-success{% else %}bg-secondary{% endif %} rounded-pill">
                                 {% if album.is_published %}ផ្សាយ{% else %}ព្រាង{% endif %}
                             </span>
@@ -58,6 +65,9 @@
                             <div class="btn-group btn-group-sm">
                                 <button type="button" class="btn btn-primary" onclick="openUploadModal('{{ album.id }}', '{{ album.title|escapejs }}')">
                                     <i class="fa-solid fa-cloud-arrow-up me-1"></i> បញ្ចូលរូប
+                                </button>
+                                <button type="button" class="btn btn-outline-warning" title="កែសម្រួលអាល់ប៊ុម (Khmer & English)" onclick="openEditAlbumModal('{{ album.id }}', '{{ album.title|escapejs }}', '{{ album.title_en|default:''|escapejs }}', '{{ album.event_date|date:'Y-m-d'|default:'' }}', '{{ album.description|default:''|escapejs }}', '{{ album.description_en|default:''|escapejs }}', {{ album.is_published|yesno:'true,false' }})">
+                                    <i class="fa-solid fa-pen-to-square"></i>
                                 </button>
                                 <a href="{% url 'website_album_detail' album.id %}" target="_blank" class="btn btn-outline-secondary" title="មើលរូបភាព">
                                     <i class="fa-solid fa-eye"></i>
@@ -118,15 +128,19 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content rounded-4 border-0 shadow">
             <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-folder-plus text-primary me-2"></i>បង្កើតអាល់ប៊ុមថ្មី</h5>
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-folder-plus text-primary me-2"></i>បង្កើតអាល់ប៊ុមថ្មី (Bilingual Album)</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form method="post" action="{% url 'website_gallery_create' %}" enctype="multipart/form-data">
                 {% csrf_token %}
                 <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">ឈ្មោះអាល់ប៊ុម *</label>
+                        <label class="form-label fw-semibold small">ឈ្មោះអាល់ប៊ុម (ភាសាខ្មែរ 🇰🇭) *</label>
                         {{ album_form.title }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-primary">ឈ្មោះអាល់ប៊ុម (ភាសាអង់គ្លេស 🇬🇧 - បើទុកទំនេរ ប្រព័ន្ធនឹងបកប្រែដោយស្វ័យប្រវត្តិ)</label>
+                        {{ album_form.title_en }}
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold small">កាលបរិច្ឆេទកម្មវិធី</label>
@@ -137,8 +151,12 @@
                         {{ album_form.cover_image }}
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">ការពិពណ៌នាសង្ខេប</label>
+                        <label class="form-label fw-semibold small">ការពិពណ៌នាសង្ខេប (ភាសាខ្មែរ 🇰🇭)</label>
                         {{ album_form.description }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-primary">ការពិពណ៌នាសង្ខេប (ភាសាអង់គ្លេស 🇬🇧 - បើទុកទំនេរ ប្រព័ន្ធនឹងបកប្រែដោយស្វ័យប្រវត្តិ)</label>
+                        {{ album_form.description_en }}
                     </div>
                     <div class="form-check form-switch p-3 bg-light rounded-3 border">
                         {{ album_form.is_published }}
@@ -150,6 +168,59 @@
                 <div class="modal-footer border-0 pt-0">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">បោះបង់</button>
                     <button type="submit" class="btn btn-primary fw-bold">បង្កើតអាល់ប៊ុម</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Edit Album (Bilingual) -->
+<div class="modal fade" id="editAlbumModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-pen-to-square text-warning me-2"></i>កែសម្រួលអាល់ប៊ុម (Bilingual Khmer & English)</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editAlbumForm" method="post" action="" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ឈ្មោះអាល់ប៊ុម (ភាសាខ្មែរ 🇰🇭) *</label>
+                        <input type="text" name="title" id="editAlbumTitle" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-primary">ឈ្មោះអាល់ប៊ុម (ភាសាអង់គ្លេស 🇬🇧)</label>
+                        <input type="text" name="title_en" id="editAlbumTitleEn" class="form-control" placeholder="English album title (auto-translated if left empty)">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">កាលបរិច្ឆេទកម្មវិធី</label>
+                        <input type="date" name="event_date" id="editAlbumEventDate" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ប្តូររូបភាពតំណាង (Cover Photo - ស្រេចចិត្ត)</label>
+                        <input type="file" name="cover_image" id="editAlbumCoverImage" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small">ការពិពណ៌នា (ភាសាខ្មែរ 🇰🇭)</label>
+                        <textarea name="description" id="editAlbumDescription" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold small text-primary">ការពិពណ៌នា (ភាសាអង់គ្លេស 🇬🇧)</label>
+                        <textarea name="description_en" id="editAlbumDescriptionEn" class="form-control" rows="2"></textarea>
+                    </div>
+                    <div class="form-check form-switch p-3 bg-light rounded-3 border">
+                        <input type="checkbox" name="is_published" id="editAlbumIsPublished" class="form-check-input">
+                        <label class="form-check-label fw-semibold ms-2" for="editAlbumIsPublished">
+                            ផ្សព្វផ្សាយជាសាធារណៈលើគេហទំព័រ
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">បោះបង់</button>
+                    <button type="submit" class="btn btn-warning fw-bold text-dark">
+                        <i class="fa-solid fa-check me-1"></i> រក្សាទុកការកែប្រែ
+                    </button>
                 </div>
             </form>
         </div>
@@ -199,6 +270,18 @@
 
 {% block extra_js %}
 <script>
+    function openEditAlbumModal(id, title, titleEn, eventDate, desc, descEn, isPublished) {
+        document.getElementById('editAlbumForm').action = `/portal/cms/gallery/album/edit/${id}/`;
+        document.getElementById('editAlbumTitle').value = title || '';
+        document.getElementById('editAlbumTitleEn').value = titleEn || '';
+        document.getElementById('editAlbumEventDate').value = eventDate || '';
+        document.getElementById('editAlbumDescription').value = desc || '';
+        document.getElementById('editAlbumDescriptionEn').value = descEn || '';
+        document.getElementById('editAlbumIsPublished').checked = (isPublished === true || isPublished === 'true');
+        const modal = new bootstrap.Modal(document.getElementById('editAlbumModal'));
+        modal.show();
+    }
+
     function openUploadModal(albumId, albumTitle) {
         document.getElementById('uploadAlbumTitle').textContent = albumTitle;
         document.getElementById('uploadPhotosForm').action = `/portal/cms/gallery/${albumId}/upload/`;

@@ -13,6 +13,7 @@ from apps.academics.models import Classroom, AcademicYear
 from .models import NewsArticle, GalleryAlbum, GalleryPhoto, WebsiteBanner, ContactMessage
 from .forms import NewsArticleForm, GalleryAlbumForm, GalleryPhotosUploadForm, WebsiteBannerForm, ContactMessageForm
 from .website_google_sheets_sync import WebsiteGoogleSheetsSync
+from apps.accounts.translation_service import get_current_language
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,8 @@ def website_home(request):
     }
 
     # Contact Form for homepage footer/section
-    contact_form = ContactMessageForm()
+    is_english = (get_current_language(request) == 'en')
+    contact_form = ContactMessageForm(is_english=is_english)
 
     return render(request, 'website/index.html', {
         'school_profile': school_profile,
@@ -191,14 +193,16 @@ def website_contact(request):
     Contact Us page with Google Maps, school address, phone, email and inquiry form.
     """
     school_profile = SchoolProfile.get_settings()
+    is_english = (get_current_language(request) == 'en')
     if request.method == 'POST':
-        form = ContactMessageForm(request.POST)
+        form = ContactMessageForm(request.POST, is_english=is_english)
         if form.is_valid():
             form.save()
-            messages.success(request, "សាររបស់លោកអ្នកត្រូវបានផ្ញើជូនគណៈគ្រប់គ្រងសាលារៀនដោយជោគជ័យ! យើងខ្ញុំនឹងឆ្លើយតបឆាប់ៗនេះ។")
+            msg_text = "Your inquiry has been submitted successfully! We will get back to you shortly." if is_english else "សាររបស់លោកអ្នកត្រូវបានផ្ញើជូនគណៈគ្រប់គ្រងសាលារៀនដោយជោគជ័យ! យើងខ្ញុំនឹងឆ្លើយតបឆាប់ៗនេះ។"
+            messages.success(request, msg_text)
             return redirect('website_contact')
     else:
-        form = ContactMessageForm()
+        form = ContactMessageForm(is_english=is_english)
 
     return render(request, 'website/contact.html', {
         'school_profile': school_profile,
@@ -369,6 +373,32 @@ def cms_gallery_create(request):
 
 @login_required
 @role_required(['ADMIN'])
+def cms_gallery_edit(request, pk):
+    """
+    Edit existing photo album (Khmer & English titles, descriptions, date, published status).
+    """
+    album = get_object_or_404(GalleryAlbum, pk=pk)
+    if request.method == 'POST':
+        form = GalleryAlbumForm(request.POST, request.FILES, instance=album)
+        if form.is_valid():
+            alb = form.save(commit=False)
+            if not alb.title_en and alb.title:
+                try:
+                    from apps.tools.ai_translation_service import AiTranslationService
+                    alb.title_en = AiTranslationService.translate_khmer_to_english(alb.title, context="Gallery Album Title")
+                except Exception:
+                    pass
+            alb.save()
+            messages.success(request, f"បានកែប្រែអាល់ប៊ុម '{alb.title}' ជោគជ័យ!")
+        else:
+            for err_list in form.errors.values():
+                for e in err_list:
+                    messages.error(request, e)
+    return redirect('website_gallery_manager')
+
+
+@login_required
+@role_required(['ADMIN'])
 def cms_gallery_upload(request, pk):
     """
     Upload multiple photos to a specific album.
@@ -482,6 +512,7 @@ def cms_google_sheets_dashboard(request):
     # Current database record counts
     announcements_count = Announcement.objects.count()
     news_count = NewsArticle.objects.count()
+    gallery_count = GalleryAlbum.objects.count()
     contact_count = ContactMessage.objects.count()
     school_profile = SchoolProfile.get_settings()
 
@@ -490,6 +521,7 @@ def cms_google_sheets_dashboard(request):
         'spreadsheet_info': spreadsheet_info,
         'announcements_count': announcements_count,
         'news_count': news_count,
+        'gallery_count': gallery_count,
         'contact_count': contact_count,
         'school_profile': school_profile,
     })
@@ -509,9 +541,10 @@ def cms_google_sheets_push(request):
             messages.success(
                 request,
                 f"🎉 បានរុញទិន្នន័យទៅកាន់ Google Sheets ជោគជ័យ! "
-                f"(សេចក្តីជូនដំណឹង {res['announcements_count']}, "
-                f"ព័ត៌មាន {res['news_count']}, "
-                f"សារទំនាក់ទំនង {res['contact_messages_count']})"
+                f"(សេចក្តីជូនដំណឹង {res.get('announcements', 0)}, "
+                f"ព័ត៌មាន {res.get('news', 0)}, "
+                f"អាល់ប៊ុមរូបភាព {res.get('gallery_albums', 0)}, "
+                f"សារទំនាក់ទំនង {res.get('contacts', 0)})"
             )
         except Exception as e:
             logger.error(f"Error pushing website data to Google Sheets: {e}")
@@ -530,8 +563,8 @@ def cms_google_sheets_pull(request):
             config = GoogleSheetsConfig.get_config()
             syncer = WebsiteGoogleSheetsSync(config=config)
             res = syncer.pull_from_sheets()
-            created_total = res['announcements_created'] + res['news_created']
-            updated_total = res['announcements_updated'] + res['news_updated'] + res['contact_updated']
+            created_total = res.get('announcements_created', 0) + res.get('news_created', 0) + res.get('gallery_created', 0)
+            updated_total = res.get('announcements_updated', 0) + res.get('news_updated', 0) + res.get('contact_updated', 0) + res.get('gallery_updated', 0)
             messages.success(
                 request,
                 f"🎉 បានទាញទិន្នន័យពី Google Sheets មកកាន់ប្រព័ន្ធដោយជោគជ័យ! "

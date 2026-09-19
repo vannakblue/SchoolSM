@@ -120,6 +120,60 @@
     <div id="regSaveAlert" class="alert alert-success mt-2 py-2 small d-none mb-0"></div>
 </div>
 
+<!-- Admin Student Self-Update Control Card (No-print) -->
+<div class="custom-card mb-3 p-3 no-print border-start border-4 {% if school_profile.allow_student_self_update %}border-primary{% else %}border-secondary{% endif %}" id="studentSelfUpdateControlCard" style="background: #ffffff; border-radius: 14px; box-shadow: 0 3px 10px rgba(0,0,0,0.04);">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+        <div class="d-flex align-items-center gap-2">
+            <div class="rounded-circle p-2 bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                <i class="fa-solid fa-user-pen fs-5"></i>
+            </div>
+            <div>
+                <h5 class="fw-bold mb-0 text-dark">សិទ្ធិកែប្រែព័ត៌មានសិស្សដោយខ្លួនឯង (Student Self-Profile Update)</h5>
+                <p class="text-muted small mb-0">អនុញ្ញាតឱ្យសិស្សកែប្រែព័ត៌មានទំនាក់ទំនង អាសយដ្ឋាន រូបថត និងអាណាព្យាបាលផ្ទាល់ខ្លួន (Web Portal & Mobile App)</p>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center gap-3">
+            <div class="form-check form-switch fs-5 mb-0 d-flex align-items-center gap-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="inputStudentSelfUpdateToggle" {% if school_profile.allow_student_self_update %}checked{% endif %} style="cursor: pointer; width: 2.6em; height: 1.3em;" onchange="toggleStudentSelfUpdate(this.checked)">
+                <label class="form-check-label visually-hidden" for="inputStudentSelfUpdateToggle" id="labelStudentSelfUpdate">
+                    {% if school_profile.allow_student_self_update %}បើកដំណើរការ (OPEN){% else %}បានបិទ (CLOSED){% endif %}
+                </label>
+            </div>
+            <div id="selfUpdateStatusBadgeWrapper">
+                {% if school_profile.allow_student_self_update %}
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleStudentSelfUpdate(false)">
+                    <i class="fa-solid fa-circle-check me-1"></i> កំពុងបើក (OPEN)
+                </button>
+                {% else %}
+                <button type="button" class="btn btn-sm btn-secondary rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleStudentSelfUpdate(true)">
+                    <i class="fa-solid fa-lock me-1"></i> បានបិទ (CLOSED)
+                </button>
+                {% endif %}
+            </div>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#selfUpdateMessageCollapse" aria-expanded="false" title="សារជូនដំណឹងពេលបិទ">
+                <i class="fa-solid fa-gear me-1"></i> សារជូនដំណឹង
+            </button>
+        </div>
+    </div>
+
+    <!-- Collapsible Closed Message Config -->
+    <div class="collapse mt-3 pt-2 border-top" id="selfUpdateMessageCollapse">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-9">
+                <label class="form-label fw-bold small text-muted mb-1">សារជូនដំណឹងពេលបិទការកែប្រែ (Closed Notice Message)</label>
+                <input type="text" class="form-control form-control-sm" id="inputSelfUpdateClosedMsg" value="{{ school_profile.student_update_closed_message }}">
+            </div>
+            <div class="col-md-3">
+                <button type="button" class="btn btn-sm btn-primary w-100 fw-bold py-1" onclick="saveSelfUpdateMessage()">
+                    <i class="fa-solid fa-floppy-disk me-1"></i> រក្សាទុកសារ (Save)
+                </button>
+            </div>
+        </div>
+    </div>
+    <div id="selfUpdateAlert" class="alert alert-success mt-2 py-2 small d-none mb-0"></div>
+</div>
+
 <!-- Admin Grade-Level Registration Control Card (No-print) -->
 <div class="custom-card mb-4 p-3 no-print border-start border-4 border-info" id="gradeRegControlCard" style="background: #ffffff; border-radius: 14px; box-shadow: 0 3px 10px rgba(0,0,0,0.04);">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
@@ -1256,5 +1310,70 @@ document.addEventListener('DOMContentLoaded', function() {
         if (savedMode) setGradeViewMode(savedMode);
     } catch (e) {}
 });
+
+function toggleStudentSelfUpdate(enable) {
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '{{ csrf_token }}';
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', csrftoken);
+    formData.append('is_allowed', enable ? 'true' : 'false');
+    
+    fetch("{% url 'api_toggle_student_self_update' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            const toggle = document.getElementById('inputStudentSelfUpdateToggle');
+            if (toggle) toggle.checked = data.allow_student_self_update;
+            const badgeWrapper = document.getElementById('selfUpdateStatusBadgeWrapper');
+            if (badgeWrapper) {
+                if (data.allow_student_self_update) {
+                    badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-primary rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleStudentSelfUpdate(false)"><i class="fa-solid fa-circle-check me-1"></i> កំពុងបើក (OPEN)</button>`;
+                } else {
+                    badgeWrapper.innerHTML = `<button type="button" class="btn btn-sm btn-secondary rounded-pill px-3 py-1 fw-bold shadow-sm d-inline-flex align-items-center gap-1" onclick="toggleStudentSelfUpdate(true)"><i class="fa-solid fa-lock me-1"></i> បានបិទ (CLOSED)</button>`;
+                }
+            }
+            const card = document.getElementById('studentSelfUpdateControlCard');
+            if (card) {
+                card.className = `custom-card mb-3 p-3 no-print border-start border-4 ${data.allow_student_self_update ? 'border-primary' : 'border-secondary'}`;
+            }
+            showSelfUpdateAlert(data.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert('បរាជ័យក្នុងការផ្លាស់ប្តូរសិទ្ធិកែប្រែព័ត៌មានសិស្ស!');
+    });
+}
+
+function saveSelfUpdateMessage() {
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]') ? document.querySelector('[name=csrfmiddlewaretoken]').value : '{{ csrf_token }}';
+    const msg = document.getElementById('inputSelfUpdateClosedMsg').value;
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', csrftoken);
+    formData.append('closed_message', msg);
+    
+    fetch("{% url 'api_toggle_student_self_update' %}", {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            showSelfUpdateAlert("បានរក្សាទុកសារជូនដំណឹងដោយជោគជ័យ!");
+        }
+    })
+    .catch(err => console.error(err));
+}
+
+function showSelfUpdateAlert(msg) {
+    const alertBox = document.getElementById('selfUpdateAlert');
+    if (alertBox) {
+        alertBox.textContent = msg;
+        alertBox.classList.remove('d-none');
+        setTimeout(() => alertBox.classList.add('d-none'), 3500);
+    }
+}
 </script>
 {% endblock %}

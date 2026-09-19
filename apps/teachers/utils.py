@@ -5,7 +5,7 @@ from django.db.models import Q
 from apps.teachers.models import Teacher, TeacherAttendance, TeacherLeaveRequest, TeacherPunchLog
 from apps.academics.models import Timetable, Classroom, AcademicYear
 
-from apps.attendance.models import StudentAttendance, AttendanceSubmissionLog
+from apps.attendance.models import StudentAttendance, AttendanceSubmissionLog, AttendanceSetting
 from apps.academics.utils import get_active_academic_year
 
 KHMER_LATIN_DICT = {
@@ -172,6 +172,9 @@ def get_teacher_daily_attendance_data(teachers, target_date, active_year=None, c
         'overall_compliance_rate': 100.0,
     }
 
+    att_settings = AttendanceSetting.get_settings()
+    default_grace = att_settings.submission_grace_minutes or 30
+
     for teacher in teachers:
         slots = teacher_slots_map.get(teacher.id, [])
         # Sort slots by period number
@@ -210,8 +213,16 @@ def get_teacher_daily_attendance_data(teachers, target_date, active_year=None, c
                     pending_count += 1
                 else:
                     # target_date == current_date
-                    slot_end_time = slot.end_time or time(17, 0)
-                    if current_time > slot_end_time:
+                    # Slot is considered UNRECORDED if 30 minutes (or period grace minutes) have elapsed since class start
+                    period_grace = att_settings.get_period_grace_minutes(p_num) if hasattr(att_settings, 'get_period_grace_minutes') else default_grace
+                    if slot.start_time:
+                        slot_start_dt = datetime.combine(target_date, slot.start_time)
+                        slot_cutoff_dt = slot_start_dt + timedelta(minutes=period_grace)
+                        slot_cutoff_time = slot_cutoff_dt.time()
+                    else:
+                        slot_cutoff_time = slot.end_time or time(17, 0)
+
+                    if current_time > slot_cutoff_time:
                         slot_status = 'UNRECORDED'
                         unrecorded_count += 1
                     else:

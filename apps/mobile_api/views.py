@@ -24,6 +24,7 @@ from apps.examinations.models import (
 from .models import DeviceFCMToken, MobileNotificationLog
 from .serializers import (
     UserProfileSerializer, TeacherProfileSerializer, StudentProfileSerializer,
+    StudentSelfUpdateSerializer,
     StudentAttendanceSerializer, TeacherAttendanceSerializer, TimetableSerializer,
     ExamGradeSerializer, MobileNotificationSerializer, SchoolInfoSerializer
 )
@@ -259,6 +260,7 @@ class RegisterFCMTokenView(APIView):
 class UserProfileView(APIView):
     """
     Retrieves and updates the logged-in user profile.
+    Supports student self-update restrictions configured by Admin.
     """
     permission_classes = [permissions.IsAuthenticated]
 
@@ -266,6 +268,8 @@ class UserProfileView(APIView):
         user = request.user
         serializer = UserProfileSerializer(user, context={'request': request})
         role_profile = None
+        allow_student_self_update = True
+        student_update_closed_message = ""
 
         if user.role == User.Role.TEACHER:
             teacher = getattr(user, 'teacher_profile', None)
@@ -276,17 +280,45 @@ class UserProfileView(APIView):
             student, _ = resolve_student_and_children_for_user(user)
             if student:
                 role_profile = StudentProfileSerializer(student, context={'request': request}).data
+            
+            sp = SchoolProfile.get_settings()
+            allow_student_self_update, student_update_closed_message = sp.is_student_self_update_allowed()
 
         return Response({
             'status': 'success',
             'user': serializer.data,
-            'role_profile': role_profile
+            'role_profile': role_profile,
+            'allow_student_self_update': allow_student_self_update,
+            'student_update_closed_message': student_update_closed_message,
         })
 
     def patch(self, request):
         user = request.user
         phone = request.data.get('phone')
         email = request.data.get('email')
+
+        # If student role, check if student self-update is allowed by admin
+        if user.role == User.Role.STUDENT:
+            sp = SchoolProfile.get_settings()
+            allow_self_update, closed_msg = sp.is_student_self_update_allowed()
+            if not allow_self_update:
+                return Response({
+                    'status': 'error',
+                    'code': 'SELF_UPDATE_DISABLED',
+                    'message': closed_msg
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            from apps.examinations.services import resolve_student_and_children_for_user
+            student, _ = resolve_student_and_children_for_user(user)
+            if student:
+                student_serializer = StudentSelfUpdateSerializer(student, data=request.data, partial=True)
+                if student_serializer.is_valid():
+                    student_serializer.save()
+                else:
+                    return Response({
+                        'status': 'error',
+                        'errors': student_serializer.errors
+                    }, status=status.HTTP_400_BAD_REQUEST)
 
         if phone is not None:
             user.phone = phone.strip() or None
@@ -299,6 +331,117 @@ class UserProfileView(APIView):
             'message': 'បានកែប្រែព័ត៌មានជោគជ័យ!',
             'user': UserProfileSerializer(user, context={'request': request}).data
         })
+
+
+class MobileStudentSelfProfileUpdateView(APIView):
+    """
+    Dedicated Mobile API endpoint for students to view their profile update eligibility and update their own biographical/contact info.
+    Supports GET (check eligibility & current fields) and PATCH/POST (update own fields).
+    Strictly prevents modifying administrative fields and ensures students can only edit their own profile.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        if user.role != User.Role.STUDENT and user.role != User.Role.ADMIN:
+            return Response({
+                'status': 'error',
+                'message': 'ទំព័រនេះសម្រាប់តែសិស្សានុសិស្សប៉ុណ្ណោះ!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.examinations.services import resolve_student_and_children_for_user
+
+        student = None
+        if user.role == User.Role.STUDENT:
+            student, _ = resolve_student_and_children_for_user(user)
+        elif user.role == User.Role.ADMIN:
+            student_id = request.query_params.get('student_id')
+            if student_id:
+                student = Student.objects.filter(pk=student_id).first()
+            else:
+                student = Student.objects.first()
+
+        if not student:
+            return Response({
+                'status': 'error',
+                'message': 'រកមិនឃើញទិន្នន័យសិស្សឡើយ!'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        sp = SchoolProfile.get_settings()
+        allow_self_update, closed_msg = sp.is_student_self_update_allowed()
+
+        return Response({
+            'status': 'success',
+            'allow_student_self_update': allow_self_update,
+            'student_update_closed_message': closed_msg,
+            'can_edit': (user.role == User.Role.ADMIN) or allow_self_update,
+            'student': StudentProfileSerializer(student, context={'request': request}).data
+        })
+
+    def patch(self, request):
+        return self._do_update(request)
+
+    def post(self, request):
+        return self._do_update(request)
+
+    def _do_update(self, request):
+        user = request.user
+        if user.role != User.Role.STUDENT and user.role != User.Role.ADMIN:
+            return Response({
+                'status': 'error',
+                'message': 'ទំព័រនេះសម្រាប់តែសិស្សានុសិស្សប៉ុណ្ណោះ!'
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        from apps.examinations.services import resolve_student_and_children_for_user
+
+        sp = SchoolProfile.get_settings()
+        allow_self_update, closed_msg = sp.is_student_self_update_allowed()
+
+        # If student role, enforce Admin master toggle
+        if user.role == User.Role.STUDENT and not allow_self_update:
+            return Response({
+                'status': 'error',
+                'code': 'SELF_UPDATE_DISABLED',
+                'message': closed_msg
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        student = None
+        if user.role == User.Role.STUDENT:
+            # STRICT OWNERSHIP: student can only ever resolve and edit their own record
+            student, _ = resolve_student_and_children_for_user(user)
+        elif user.role == User.Role.ADMIN:
+            student_id = request.data.get('student_id') or request.query_params.get('student_id')
+            if student_id:
+                student = Student.objects.filter(pk=student_id).first()
+            else:
+                student = Student.objects.first()
+
+        if not student:
+            return Response({
+                'status': 'error',
+                'message': 'រកមិនឃើញទិន្នន័យសិស្សឡើយ!'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = StudentSelfUpdateSerializer(student, data=request.data, partial=True)
+        if serializer.is_valid():
+            with transaction.atomic():
+                saved_student = serializer.save()
+                # Keep user phone synchronized if student phone updated
+                if saved_student.phone and (not user.phone or user.phone != saved_student.phone):
+                    user.phone = saved_student.phone
+                    user.save(update_fields=['phone'])
+
+            return Response({
+                'status': 'success',
+                'message': f'🎉 បានកែប្រែ និងធ្វើបច្ចុប្បន្នភាពព័ត៌មានផ្ទាល់ខ្លួនរបស់ {student.khmer_name} ជោគជ័យ!',
+                'student': StudentProfileSerializer(saved_student, context={'request': request}).data
+            })
+        else:
+            return Response({
+                'status': 'error',
+                'message': 'ទិន្នន័យមិនត្រឹមត្រូវ សូមពិនិត្យឡើងវិញ!',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MobileChangePasswordView(APIView):

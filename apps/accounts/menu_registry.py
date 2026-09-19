@@ -31,7 +31,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'ស្ថិតិអប់រំ MoEYS',
                 'name_en': 'MoEYS EMIS Statistics',
                 'icon': 'fa-solid fa-file-waveform text-info',
-                'default_roles': ['ADMIN', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN'],
                 'url_name': 'moeys_reports',
             },
             {
@@ -82,14 +82,14 @@ MENU_SECTIONS_CATALOG = [
         'name_en': 'Students & Academics',
         'icon': 'fa-solid fa-graduation-cap',
         'color': 'info',
-        'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+        'default_roles': ['ADMIN', 'TEACHER'],
         'items': [
             {
                 'key': 'student_list',
                 'name_kh': 'បញ្ជីសិស្ស',
                 'name_en': 'Student Directory',
                 'icon': 'fa-solid fa-users',
-                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'student_list',
             },
             {
@@ -169,7 +169,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'ស្ថិតិតាមអាយុ & ថ្នាក់',
                 'name_en': 'Students by Age & Grade',
                 'icon': 'fa-solid fa-chart-column text-info',
-                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'student_age_grade_statistics',
             },
             {
@@ -177,7 +177,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'បញ្ជីសម្រង់សិស្សតាមអាយុ',
                 'name_en': 'Customizable Age Roster',
                 'icon': 'fa-solid fa-users-rectangle text-primary',
-                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'student_age_custom_roster',
             },
             {
@@ -185,7 +185,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'សម្រង់ព័ត៌មានសិស្សម្នាក់ៗ',
                 'name_en': 'MoEYS Individual Student Extract (35 Cols)',
                 'icon': 'fa-solid fa-file-invoice text-success',
-                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'moeys_individual_student_roster',
             },
             {
@@ -267,7 +267,7 @@ MENU_SECTIONS_CATALOG = [
         'name_en': 'Attendance Management',
         'icon': 'fa-solid fa-clipboard-user',
         'color': 'success',
-        'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+        'default_roles': ['ADMIN', 'TEACHER'],
         'items': [
             {
                 'key': 'assembly_attendance',
@@ -282,7 +282,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'ស្រង់វត្តមានសិស្សតាមម៉ោង',
                 'name_en': 'Student Hourly Attendance Sheet',
                 'icon': 'fa-solid fa-clipboard-check text-primary',
-                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'student_attendance_grid',
             },
             {
@@ -290,7 +290,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'របាយការណ៍វត្តមានប្រចាំខែ',
                 'name_en': 'Monthly Attendance Report',
                 'icon': 'fa-solid fa-chart-column text-info',
-                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'attendance_report',
             },
             {
@@ -306,7 +306,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'សិស្សអវត្តមានច្រើន',
                 'name_en': 'At-Risk Chronic Absentees',
                 'icon': 'fa-solid fa-triangle-exclamation text-danger',
-                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'at_risk_attendance',
             },
         ]
@@ -440,7 +440,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'តារាងគ្រប់គ្រងបុគ្គលិក ២០២៦-២០២៧',
                 'name_en': 'MoEYS Staff Roster 2026-2027',
                 'icon': 'fa-solid fa-file-invoice text-primary',
-                'default_roles': ['ADMIN', 'TEACHER', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER'],
                 'url_name': 'moeys_staff_roster',
             },
             {
@@ -605,14 +605,14 @@ MENU_SECTIONS_CATALOG = [
         'name_en': 'Extras & Library',
         'icon': 'fa-solid fa-layer-group',
         'color': 'info',
-        'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+        'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
         'items': [
             {
                 'key': 'book_list',
                 'name_kh': 'បណ្ណាល័យសាលា',
                 'name_en': 'Library Books & Borrowing',
                 'icon': 'fa-solid fa-book-bookmark',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'book_list',
             },
             {
@@ -620,7 +620,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'ស្តុកសម្ភារៈសាលា',
                 'name_en': 'School Inventory & Asset Stock',
                 'icon': 'fa-solid fa-boxes-stacked',
-                'default_roles': ['ADMIN', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN'],
                 'url_name': 'inventory_list',
             },
         ]
@@ -631,14 +631,14 @@ MENU_SECTIONS_CATALOG = [
         'name_en': 'Digital Tools Hub',
         'icon': 'fa-solid fa-wand-magic-sparkles',
         'color': 'warning',
-        'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+        'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
         'items': [
             {
                 'key': 'tools_hub',
                 'name_kh': 'ផ្ទាំងឧបករណ៍សរុប',
                 'name_en': 'Tools Hub Dashboard',
                 'icon': 'fa-solid fa-grip text-primary',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tools_hub',
             },
             {
@@ -646,7 +646,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'បញ្ចូលឯកសារ PDF',
                 'name_en': 'PDF Merge Tool',
                 'icon': 'fa-solid fa-file-pdf text-danger',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_pdf_merge',
             },
             {
@@ -654,7 +654,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'បំបែកឯកសារ PDF',
                 'name_en': 'PDF Split Tool',
                 'icon': 'fa-solid fa-file-export text-danger',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_pdf_split',
             },
             {
@@ -662,7 +662,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'រូបភាពទៅជា PDF',
                 'name_en': 'Images to PDF Tool',
                 'icon': 'fa-solid fa-images text-purple',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_images_to_pdf',
             },
             {
@@ -670,7 +670,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'ស្កេនក្រដាស & ឯកសារ',
                 'name_en': 'Document Scanner',
                 'icon': 'fa-solid fa-file-invoice text-success',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_doc_scanner',
             },
             {
@@ -678,7 +678,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'កែសម្រួលរូបភាព',
                 'name_en': 'Image Editor Studio',
                 'icon': 'fa-solid fa-crop-simple text-success',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_image_editor',
             },
             {
@@ -686,7 +686,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'កាត់រូបថតកាត (4x6 / 3x4)',
                 'name_en': 'ID Photo Passport Maker',
                 'icon': 'fa-solid fa-id-card text-info',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_id_photo_maker',
             },
             {
@@ -694,7 +694,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'បង្រួមទំហំរូបភាព',
                 'name_en': 'Image Compressor',
                 'icon': 'fa-solid fa-file-zipper text-secondary',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_image_compressor',
             },
             {
@@ -702,7 +702,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'បង្កើត QR Code',
                 'name_en': 'QR Code Generator',
                 'icon': 'fa-solid fa-qrcode text-dark',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_qr_generator',
             },
             {
@@ -710,7 +710,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'ស្កេន QR & Barcode',
                 'name_en': 'QR & Barcode Scanner',
                 'icon': 'fa-solid fa-camera text-primary',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_qr_scanner',
             },
             {
@@ -726,7 +726,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'លេខទៅជាអក្សរខ្មែរ',
                 'name_en': 'Khmer Number to Words',
                 'icon': 'fa-solid fa-money-check-dollar text-success',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_khmer_number_converter',
             },
             {
@@ -734,7 +734,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'បម្លែងថ្ងៃខែចន្ទគតិ',
                 'name_en': 'Khmer Lunar Date Converter',
                 'icon': 'fa-solid fa-moon text-warning',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_khmer_lunar_converter',
             },
             {
@@ -742,7 +742,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'រាប់ពាក្យ & វិភាគអត្ថបទ',
                 'name_en': 'Text Word Count & Analyzer',
                 'icon': 'fa-solid fa-spell-check text-info',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_text_analyzer',
             },
             {
@@ -750,7 +750,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'វាយអត្ថបទតាមសំឡេង',
                 'name_en': 'Khmer Voice Typing',
                 'icon': 'fa-solid fa-microphone-lines text-danger',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_voice_typing',
             },
             {
@@ -758,7 +758,7 @@ MENU_SECTIONS_CATALOG = [
                 'name_kh': 'ម៉ាស៊ីនគិតលេខ & បំលែងខ្នាត',
                 'name_en': 'Calculator & Unit Converter',
                 'icon': 'fa-solid fa-calculator text-primary',
-                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT', 'ACCOUNTANT'],
+                'default_roles': ['ADMIN', 'TEACHER', 'STUDENT'],
                 'url_name': 'tool_calculator_converter',
             },
         ]

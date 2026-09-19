@@ -25,11 +25,12 @@ def extract_chat_ids(target):
     return result
 
 
-def send_telegram_notification(title, message, recipient_name="សិស្ស / អាណាព្យាបាល", recipient_phone=None, recipient_type="Parent", custom_chat_id=None, reply_markup=None):
+def send_telegram_notification(title, message, recipient_name="សិស្ស / អាណាព្យាបាល", recipient_phone=None, recipient_type="Parent", custom_chat_id=None, reply_markup=None, raw_mode=False):
     """
     Dispatches a notification via Telegram Bot API to one or multiple Chat IDs.
     Supports multiple comma-separated chat IDs (e.g. "-100111, -100222, @channel").
     Optionally accepts reply_markup (inline keyboard).
+    If raw_mode=True or title is empty/None, sends `message` as is without wrapping in extra title/footer.
     """
     config = TelegramConfig.objects.first()
     target_raw = custom_chat_id or (config.chat_id if config else None)
@@ -38,7 +39,10 @@ def send_telegram_notification(title, message, recipient_name="សិស្ស /
     
     status = NotificationLog.Status.SIMULATED
     
-    formatted_msg = f"🔔 *{title}*\n\n{message}\n\n🏫 _ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)_"
+    if raw_mode or not title:
+        formatted_msg = message
+    else:
+        formatted_msg = f"🔔 *{title}*\n\n{message}\n\n🏫 _ប្រព័ន្ធគ្រប់គ្រងសាលារៀន (SchoolSM)_"
     
     if config and config.is_active and bot_token and chat_ids:
         any_success = False
@@ -57,6 +61,13 @@ def send_telegram_notification(title, message, recipient_name="សិស្ស /
                 if resp.status_code == 200:
                     any_success = True
                     all_failed = False
+                elif resp.status_code == 400:
+                    # Retry without Markdown in case of formatting issues
+                    payload.pop('parse_mode', None)
+                    resp_plain = requests.post(url, json=payload, timeout=5)
+                    if resp_plain.status_code == 200:
+                        any_success = True
+                        all_failed = False
             except Exception:
                 pass
         

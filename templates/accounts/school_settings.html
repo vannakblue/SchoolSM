@@ -303,6 +303,11 @@
                             <i class="fa-solid fa-palette me-1 text-warning"></i> {% lang_switch "៦. ពុម្ពអក្សរ & រចនាប័ទ្មពណ៌" "6. Typography & Theme" %}
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold small py-2 px-3 rounded-pill" id="student-update-tab" data-bs-toggle="pill" data-bs-target="#tab-student-update" type="button" role="tab">
+                            <i class="fa-solid fa-user-pen me-1 text-primary"></i> {% lang_switch "៧. សិទ្ធិកែប្រែព័ត៌មានសិស្ស" "7. Student Self-Update" %}
+                        </button>
+                    </li>
                 </ul>
 
                 <!-- Tab Content -->
@@ -973,6 +978,59 @@
                                     <label class="form-label fw-bold small text-dark d-block">{% lang_switch "ពណ៌ផ្ទៃខាងក្រោយ" "Background Color" %}</label>
                                     {{ form.body_bg_color }}
                                     <small class="text-muted d-block mt-1">{% lang_switch "ផ្ទៃទំព័រកម្មវិធី & Web" "App & Web Background" %}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- TAB 7: Student Self-Update Permission -->
+                    <div class="tab-pane fade" id="tab-student-update" role="tabpanel">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h6 class="fw-bold text-primary mb-0">
+                                <i class="fa-solid fa-user-pen me-1"></i> {% lang_switch "សិទ្ធិកែប្រែព័ត៌មានសិស្សដោយខ្លួនឯង" "Student Self-Profile Update Permissions" %}
+                            </h6>
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill">
+                                {% lang_switch "Web Portal & Mobile App" "Web Portal & Mobile App" %}
+                            </span>
+                        </div>
+
+                        <div class="alert alert-info border-0 shadow-sm rounded-4 mb-4 small">
+                            <div class="d-flex gap-2">
+                                <div class="fs-4 text-primary"><i class="fa-solid fa-circle-info"></i></div>
+                                <div>
+                                    <strong>{% lang_switch "គោលការណ៍គ្រប់គ្រង និងសុវត្ថិភាពទិន្នន័យ៖" "Data Privacy & Governance Rule:" %}</strong>
+                                    <ul class="mb-0 ps-3 mt-1">
+                                        <li>{% lang_switch "នៅពេលបើកដំណើរការ សិស្សអាចកែប្រែបាន<strong>តែទិន្នន័យផ្ទាល់ខ្លួនរបស់គាត់ប៉ុណ្ណោះ</strong> (លេខទូរស័ព្ទ, អាសយដ្ឋាន, រូបថត, ព័ត៌មានឪពុកម្តាយ)។" "When enabled, students can <strong>only update their own personal information</strong> (phone, address, photo, parent details)." %}</li>
+                                        <li>{% lang_switch "សិស្ស<strong>មិនអាច</strong>កែប្រែព័ត៌មានរដ្ឋបាលដូចជា៖ អត្តលេខសិស្ស, ថ្នាក់រៀន, ឆ្នាំសិក្សា, ស្ថានភាពសិក្សា ឬអាហារូបករណ៍បានឡើយ។" "Students <strong>cannot</strong> alter academic or administrative fields such as Student ID, Classroom, Academic Year, Status, or Scholarships." %}</li>
+                                        <li>{% lang_switch "ប្រសិនបើរដ្ឋបាលសាលាបិទសិទ្ធិនេះ សិស្សមិនអាចកែប្រែព័ត៌មានបានឡើយទាំងនៅលើ Web Portal និង Mobile App ហើយប្រព័ន្ធនឹងបង្ហាញសារជូនដំណឹងខាងក្រោម។" "If disabled by school admin, students cannot edit their profile on either Web Portal or Mobile App, and the closed notice message below will be displayed." %}</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-4 mb-4">
+                            <div class="col-md-12">
+                                <div class="p-4 border rounded-4 bg-light d-flex align-items-center justify-content-between shadow-xs">
+                                    <div class="pe-3">
+                                        <div class="fw-bold text-dark fs-6 mb-1">
+                                            <i class="fa-solid fa-toggle-on text-primary me-2"></i>{% lang_switch "បើកសិទ្ធិឱ្យសិស្សកែប្រែព័ត៌មានផ្ទាល់ខ្លួន" "Allow Students to Update Their Own Profile" %}
+                                        </div>
+                                        <div class="small text-muted">
+                                            {% lang_switch "បើក (ON) ដើម្បីអនុញ្ញាតឱ្យសិស្សអាចកែប្រែព័ត៌មានផ្ទាល់ខ្លួន | បិទ (OFF) ដើម្បីបិទការកែប្រែជាបណ្តោះអាសន្ន" "Enable (ON) to allow students to edit their profile | Disable (OFF) to temporarily close updates" %}
+                                        </div>
+                                    </div>
+                                    <div class="form-check form-switch fs-3 mb-0">
+                                        {{ form.allow_student_self_update }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold text-dark small">
+                                    <i class="fa-solid fa-message text-primary me-1"></i> {% lang_switch "សារជូនដំណឹងពេលបិទការកែប្រែ (Closed Notice Message)" "Closed Notice Message" %}
+                                </label>
+                                {{ form.student_update_closed_message }}
+                                <div class="form-text small text-muted">
+                                    {% lang_switch "សារនេះនឹងបង្ហាញជូនសិស្សនៅពេលពួកគេព្យាយាមចូលកែប្រែព័ត៌មានខណៈដែលរដ្ឋបាលសាលាបានបិទ" "This message will be shown to students if they attempt to edit their profile while updates are disabled" %}
                                 </div>
                             </div>
                         </div>

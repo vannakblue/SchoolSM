@@ -70,6 +70,22 @@ OFFLINE_DICTIONARY = {
     "ឃុំបារគូ": "Barkou Commune",
     "ស្រុកកណ្តាលស្ទឹង": "Kandal Stueng District",
     "ខេត្តកណ្តាល": "Kandal Province",
+    "ការិយាល័យអប់រំ យុវជន និងកីឡា ស្រុកកណ្តាលស្ទឹង": "Kandal Stueng District Office of Education",
+    "ការិយាល័យអប់រំ យុវជន និងកីឡា ខណ្ឌដូនពេញ": "Daun Penh District Office of Education",
+    "ការិយាល័យអប់រំ យុវជន និងកីឡា": "District Office of Education, Youth and Sport",
+    "ការិយាល័យអប់រំ": "District Office of Education",
+    "មន្ទីរអប់រំ យុវជន និងកីឡា រាជធានីភ្នំពេញ": "Phnom Penh Municipal Department of Education",
+    "មន្ទីរអប់រំ យុវជន និងកីឡា ខេត្តកណ្តាល": "Kandal Provincial Department of Education",
+    "មន្ទីរអប់រំ យុវជន និងកីឡា": "Provincial Department of Education, Youth and Sport",
+    "មន្ទីរអប់រំ": "Provincial Department of Education",
+    "ក្រសួងអប់រំ យុវជន និងកីឡា": "Ministry of Education, Youth and Sport",
+    "អនុវិទ្យាល័យ, វិទ្យាល័យ": "Secondary & High School",
+    "មត្តេយ្យ, បឋមសិក្សា, អនុវិទ្យាល័យ, វិទ្យាល័យ": "Kindergarten, Primary, Secondary & High School",
+    "មត្តេយ្យ, បឋម, អនុវិទ្យាល័យ, វិទ្យាល័យ": "Kindergarten, Primary, Secondary & High School",
+    "អនុវិទ្យាល័យ": "Secondary School",
+    "វិទ្យាល័យ": "High School",
+    "បឋមសិក្សា": "Primary School",
+    "មត្តេយ្យ": "Kindergarten",
     "យើងខ្ញុំបណ្តុះបណ្តាលសិស្សឱ្យមានទាំងចំណេះដឹងទូទៅ ជំនាញបច្ចេកវិទ្យា វិន័យ សីលធម៌ល្អ និងស្មារតីទទួលខុសត្រូវខ្ពស់។": "We educate students with comprehensive knowledge, technology skills, strong discipline, good morality, and a high sense of responsibility.",
     "ពិធីបើកបវេសនកាលឆ្នាំសិក្សាថ្មី ២០២៦-២០២៧": "Opening Ceremony of the New Academic Year 2026-2027",
     "ពិធីបើកបវេសនកាលឆ្នាំសិក្សាថ្មី": "Opening Ceremony of the New Academic Year",
@@ -87,6 +103,28 @@ OFFLINE_DICTIONARY = {
     "កម្មវិធី MoEYS & ទ្វេភាសា": "MoEYS & Bilingual Curriculum",
     "បន្ទប់ពិសោធន៍ STEM & IT": "STEM & IT Science Labs",
     "សុវត្ថិភាព & វិន័យខ្ពស់": "High Discipline & Safety",
+    "ការប្រកួតកីឡាបាល់ទាត់ និងបាល់ទះប្រចាំឆ្នាំ": "Annual Football and Volleyball Tournament",
+    "ការប្រកួតកីឡាបាល់ទាត់ប្រចាំឆ្នាំ": "Annual Football Tournament",
+    "ការប្រកួតកីឡាបាល់ទះប្រចាំឆ្នាំ": "Annual Volleyball Tournament",
+    "ការប្រកួតកីឡា": "Sports Tournament",
+    "បាល់ទាត់": "Football",
+    "បាល់ទះ": "Volleyball",
+    "ពិធីបើកបវេសនកាល និងទិវាវប្បធម៌សាលារៀន": "Opening Ceremony and School Culture Day",
+    "ពិធីបើកបវេសនកាល និងទិវាវប្បធម៌សាលា": "Opening Ceremony and School Culture Day",
+    "ទិវាវប្បធម៌សាលារៀន": "School Culture Day",
+    "ទិវាវប្បធម៌សាលា": "School Culture Day",
+    "ទិវាវប្បធម៌": "Culture Day",
+    "សកម្មភាពកីឡាដើម្បីសុខភាព និងមិត្តភាពរវាងថ្នាក់រៀនទាំងអស់។": "Sports activities for health, fitness, and friendship among all classes.",
+    "កម្រងរូបភាពសកម្មភាពដ៏រស់រវើកក្នុងពិធីបើកបវេសនកាល និងការសម្តែងសិល្បៈវប្បធម៌របស់សិស្សានុសិស្សគ្រប់កម្រិតថ្នាក់។": "Vibrant photo collection of the academic opening ceremony and cultural art performances by students across all grade levels.",
+    "សកម្មភាពសិស្ស": "Student Activities",
+    "ពិធីចែកសញ្ញាបត្រ": "Graduation Ceremony",
+    "ទស្សនកិច្ចសិក្សា": "Study Tour",
+    "ការងារស្ម័គ្រចិត្ត": "Volunteer Work",
+    "បណ្ណាល័យសាលា": "School Library",
+    "បន្ទប់កុំព្យូទ័រ": "Computer Lab",
+    "រូបភាពសកម្មភាព": "Activity Photos",
+    "រូបថតអនុស្សាវរីយ៍": "Memorial Photos",
+    "គ្មានការពិពណ៌នា": "No description available",
 }
 
 
@@ -109,6 +147,10 @@ class AiTranslationService:
         # If text has no Khmer characters and is purely ASCII/Latin, return as is
         if not re.search(r'[\u1780-\u17FF]', cleaned):
             return cleaned
+
+        # Fast exact match in dictionary first
+        if cleaned in OFFLINE_DICTIONARY:
+            return OFFLINE_DICTIONARY[cleaned]
 
         # Try Gemini AI Agent
         ai_result = cls._translate_with_gemini(cleaned, context=context)
@@ -135,7 +177,10 @@ class AiTranslationService:
             if val and str(val).strip():
                 clean_val = str(val).strip()
                 if re.search(r'[\u1780-\u17FF]', clean_val):
-                    to_translate[k] = clean_val
+                    if clean_val in OFFLINE_DICTIONARY:
+                        result[k] = OFFLINE_DICTIONARY[clean_val]
+                    else:
+                        to_translate[k] = clean_val
                 else:
                     result[k] = clean_val
             else:
@@ -195,7 +240,7 @@ class AiTranslationService:
                             "maxOutputTokens": 2048,
                         }
                     }
-                    resp = requests.post(url, json=payload, timeout=12)
+                    resp = requests.post(url, json=payload, timeout=3.0)
                     if resp.status_code == 200:
                         gemini_rotator.mark_success(api_key)
                         res_json = resp.json()
@@ -215,6 +260,9 @@ class AiTranslationService:
                     elif resp.status_code in [401, 403]:
                         gemini_rotator.mark_invalid(api_key)
                         break
+                except requests.exceptions.RequestException as rex:
+                    logger.debug(f"Gemini network error: {rex}")
+                    break
                 except Exception as ex:
                     logger.debug(f"Gemini translation exception on {target_model}: {ex}")
                     continue
@@ -406,6 +454,22 @@ class AiTranslationService:
             to_translate['street_address_en'] = profile.street_address
         if profile.principal_name and (overwrite or not profile.principal_name_en):
             to_translate['principal_name_en'] = profile.principal_name
+        if getattr(profile, 'doe_name', None) and (overwrite or not getattr(profile, 'doe_name_en', None)):
+            to_translate['doe_name_en'] = profile.doe_name
+        if getattr(profile, 'education_levels', None) and (overwrite or not getattr(profile, 'education_levels_en', None)):
+            to_translate['education_levels_en'] = profile.education_levels
+        if getattr(profile, 'poe_name', None) and (overwrite or not getattr(profile, 'poe_name_en', None)):
+            to_translate['poe_name_en'] = profile.poe_name
+        if getattr(profile, 'ministry_name', None) and (overwrite or not getattr(profile, 'ministry_name_en', None)):
+            to_translate['ministry_name_en'] = profile.ministry_name
+        if getattr(profile, 'province', None) and (overwrite or not getattr(profile, 'province_en', None)):
+            to_translate['province_en'] = profile.province
+        if getattr(profile, 'district', None) and (overwrite or not getattr(profile, 'district_en', None)):
+            to_translate['district_en'] = profile.district
+        if getattr(profile, 'commune', None) and (overwrite or not getattr(profile, 'commune_en', None)):
+            to_translate['commune_en'] = profile.commune
+        if getattr(profile, 'village', None) and (overwrite or not getattr(profile, 'village_en', None)):
+            to_translate['village_en'] = profile.village
 
         if to_translate:
             translations = cls.batch_translate_fields(to_translate, context="School Profile and Identity")
@@ -418,3 +482,30 @@ class AiTranslationService:
                 profile.save(update_fields=updated_fields)
                 return True
         return False
+
+    @classmethod
+    def auto_translate_gallery_album(cls, album, overwrite: bool = False) -> bool:
+        """
+        Ensures a GalleryAlbum has English title and description.
+        If blank or overwrite=True, auto-translates from Khmer fields and saves.
+        """
+        updated = False
+        to_translate = {}
+        if album.title and (overwrite or not album.title_en):
+            to_translate['title_en'] = album.title
+        if album.description and (overwrite or not album.description_en):
+            to_translate['description_en'] = album.description
+
+        if to_translate:
+            translations = cls.batch_translate_fields(to_translate, context="School Gallery Album")
+            if 'title_en' in translations and translations['title_en']:
+                album.title_en = translations['title_en']
+                updated = True
+            if 'description_en' in translations and translations['description_en']:
+                album.description_en = translations['description_en']
+                updated = True
+
+            if updated:
+                album.save(update_fields=['title_en', 'description_en'])
+        return updated
+

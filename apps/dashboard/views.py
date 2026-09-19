@@ -452,6 +452,10 @@ def student_dashboard(request):
                 avg_score = float(item.get('average_score'))
             break
 
+    from apps.accounts.models import SchoolProfile
+    school_profile = SchoolProfile.get_settings()
+    allow_student_self_update, student_update_closed_message = school_profile.is_student_self_update_allowed()
+
     return render(request, 'dashboard/student_dashboard.html', {
         'student': student,
         'children_list': children_list,
@@ -467,13 +471,15 @@ def student_dashboard(request):
         'absent_days': absent_days,
         'avg_score': avg_score,
         'exam_seating_info': exam_seating_info,
+        'allow_student_self_update': allow_student_self_update,
+        'student_update_closed_message': student_update_closed_message,
     })
 
 
 # ----------------- 5. MOEYS STATISTICAL REPORTING -----------------
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def moeys_statistics_view(request):
     """
     Official MoEYS Educational Statistics & EMIS Dashboard
@@ -590,7 +596,7 @@ def moeys_statistics_view(request):
 
 
 @login_required
-@role_required(['ADMIN', 'ACCOUNTANT'])
+@role_required(['ADMIN'])
 def export_moeys_excel(request):
     """
     Exports full MoEYS Educational Statistics report in multi-sheet Excel format
@@ -666,7 +672,7 @@ def export_moeys_excel(request):
 # ----------------- DATA EXPORT (STUDENTS & FINANCE) -----------------
 
 @login_required
-@role_required(['ADMIN', 'ACCOUNTANT'])
+@role_required(['ADMIN'])
 def export_students_csv(request):
     response = HttpResponse(content_type='text/csv; charset=utf-8-sig')
     response['Content-Disposition'] = f'attachment; filename="students_list_{datetime.now().strftime("%Y%m%d")}.csv"'
@@ -692,7 +698,7 @@ def export_students_csv(request):
 
 
 @login_required
-@role_required(['ADMIN', 'ACCOUNTANT'])
+@role_required(['ADMIN'])
 def export_students_excel(request):
     import openpyxl
     from openpyxl.styles import Font, Alignment, PatternFill

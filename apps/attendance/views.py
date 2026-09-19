@@ -22,6 +22,8 @@ from .telegram_utils import (
     send_classroom_attendance_telegram,
     send_missing_teachers_telegram,
     send_daily_summary_telegram,
+    send_daily_grade_student_absence_telegram,
+    send_daily_teacher_absence_telegram,
 )
 
 
@@ -275,7 +277,7 @@ def evaluate_attendance_timing_window(teacher_profile, classroom, period_number,
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def student_attendance_grid(request):
     """
     Absence-Focused Smart Attendance Recording View with Strict Timing Constraints
@@ -402,11 +404,11 @@ def student_attendance_grid(request):
             selected_session = StudentAttendance.Session.MORNING if selected_period <= 4 else StudentAttendance.Session.AFTERNOON
 
     # 3. Evaluate Timing Window
-    if user.role in ['ADMIN', 'ACCOUNTANT']:
+    if user.role == 'ADMIN':
         timing_eval = {
             'can_submit': True,
             'status_code': 'ADMIN_OVERRIDE',
-            'status_label': 'សិទ្ធិ Admin (ពេញលេញ)' if user.role == 'ADMIN' else 'សិទ្ធិគណនេយ្យ (ពេញលេញ)',
+            'status_label': 'សិទ្ធិ Admin (ពេញលេញ)',
             'status_message': 'លោកអ្នកមានសិទ្ធិអាចស្រង់វត្តមាន ឬកែប្រែបានគ្រប់ពេលវេលា។',
             'badge_class': 'primary',
             'submission_log': AttendanceSubmissionLog.objects.filter(classroom=selected_class, date=selected_date, session=selected_session, period_number=selected_period).first() if selected_class else None,
@@ -444,7 +446,7 @@ def student_attendance_grid(request):
                 )
                 return redirect(f"/attendance/?classroom={selected_class.id}&period={period_num_save}")
 
-        if user.role not in ['ADMIN', 'ACCOUNTANT'] and not timing_eval['can_submit']:
+        if user.role != 'ADMIN' and not timing_eval['can_submit']:
             messages.error(request, f"❌ បរាជ័យក្នុងការរក្សាទុក៖ {timing_eval['status_message']}")
             if user.role == 'TEACHER':
                 return redirect(f"/attendance/?classroom={selected_class.id}&period={selected_period}")
@@ -622,6 +624,7 @@ def student_attendance_grid(request):
 
 
 @login_required
+@role_required(['ADMIN', 'TEACHER'])
 def attendance_report(request):
     """
     Flexible Attendance aggregation report (Today, Week, Month, Custom).
@@ -862,7 +865,7 @@ def attendance_report(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def at_risk_attendance_view(request):
     """
     At-Risk Attendance & Chronic Absentee Warning Tracker.
@@ -896,28 +899,33 @@ def at_risk_attendance_view(request):
     if class_id:
         students = students.filter(classroom_id=class_id)
 
+    # Pre-aggregate distinct (date, session) pairs per student to eliminate N+1 queries and prevent worker timeouts on PostgreSQL
+    base_att_qs = StudentAttendance.objects.filter(student__in=students)
+
+    absent_counts = {}
+    for stu_id, d, sess in base_att_qs.filter(status=StudentAttendance.Status.ABSENT).order_by().values_list('student_id', 'date', 'session').distinct():
+        absent_counts[stu_id] = absent_counts.get(stu_id, 0) + 1
+
+    perm_counts = {}
+    for stu_id, d, sess in base_att_qs.filter(status=StudentAttendance.Status.PERMISSION).order_by().values_list('student_id', 'date', 'session').distinct():
+        perm_counts[stu_id] = perm_counts.get(stu_id, 0) + 1
+
+    total_sessions_counts = {}
+    for stu_id, d, sess in base_att_qs.order_by().values_list('student_id', 'date', 'session').distinct():
+        total_sessions_counts[stu_id] = total_sessions_counts.get(stu_id, 0) + 1
+
     at_risk_list = []
     for s in students:
-        # Get unique (date, session) pairs for distinct session absences
-        # 1 Session absent = 1 Time = 0.5 Day
-        absent_records = StudentAttendance.objects.filter(
-            student=s,
-            status=StudentAttendance.Status.ABSENT
-        ).values('date', 'session').distinct()
-        absent_times = absent_records.count()
+        absent_times = absent_counts.get(s.id, 0)
         absent_days = round(absent_times * 0.5, 1)
 
-        perm_records = StudentAttendance.objects.filter(
-            student=s,
-            status=StudentAttendance.Status.PERMISSION
-        ).values('date', 'session').distinct()
-        perm_times = perm_records.count()
+        perm_times = perm_counts.get(s.id, 0)
         perm_days = round(perm_times * 0.5, 1)
 
         total_absent_times = absent_times + perm_times
         total_absent_days = round(total_absent_times * 0.5, 1)
 
-        total_sessions = StudentAttendance.objects.filter(student=s).values('date', 'session').distinct().count()
+        total_sessions = total_sessions_counts.get(s.id, 0)
         total_days = round(total_sessions * 0.5, 1)
 
         # Determine target metric based on filter type and unit
@@ -996,6 +1004,8 @@ def at_risk_attendance_view(request):
 
     classrooms = Classroom.objects.filter(academic_year=active_year).order_by('grade_level', 'code') if active_year else Classroom.objects.all().order_by('grade_level', 'code')
 
+    is_admin = request.user.is_superuser or getattr(request.user, 'role', '') == 'ADMIN'
+
     return render(request, 'attendance/at_risk_attendance.html', {
         'at_risk_list': at_risk_list,
         'classrooms': classrooms,
@@ -1006,6 +1016,8 @@ def at_risk_attendance_view(request):
         'absence_type': absence_type,
         'active_year': active_year,
         'total_found': len(at_risk_list),
+        'exam_reasons': Student.ExamExclusionReason.choices,
+        'is_admin': is_admin,
     })
 
 
@@ -1047,6 +1059,7 @@ def attendance_admin_hub(request):
         if action == 'save_rules':
             grace_mins = request.POST.get('submission_grace_minutes', '30')
             mgmt_chat_id = request.POST.get('management_chat_id', '').strip()
+            homeroom_group_id = request.POST.get('homeroom_group_chat_id', '').strip()
             custom_groups = request.POST.get('custom_dispatch_groups', '').strip()
             auto_dispatch = request.POST.get('auto_daily_dispatch_enabled') == 'on'
             auto_students = request.POST.get('auto_send_student_summary') == 'on'
@@ -1079,6 +1092,8 @@ def attendance_admin_hub(request):
             att_settings.period_grace_minutes = period_grace
             att_settings.period_dispatch_times = period_dispatch_times
             att_settings.management_chat_id = mgmt_chat_id or None
+            att_settings.homeroom_group_chat_id = homeroom_group_id or None
+            att_settings.custom_dispatch_groups = custom_groups or None
             att_settings.auto_daily_dispatch_enabled = auto_dispatch
             att_settings.auto_send_student_summary = auto_students
             att_settings.auto_send_teacher_summary = auto_teachers
@@ -1310,6 +1325,34 @@ def attendance_admin_hub(request):
                 messages.error(request, f"⚠️ {res.get('message')}")
             return redirect('attendance_admin_hub')
 
+        # 8. Immediate Daily Grade Student Absence Reports (Grades 7 to 12)
+        elif action == 'dispatch_daily_grades_now':
+            target_date_str = request.POST.get('target_date', date.today().strftime('%Y-%m-%d'))
+            try:
+                t_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                t_date = date.today()
+            res = send_daily_grade_student_absence_telegram(target_date=t_date)
+            if res.get('success'):
+                messages.success(request, f"🚀 {res.get('message')}")
+            else:
+                messages.error(request, f"⚠️ {res.get('message')}")
+            return redirect('attendance_admin_hub')
+
+        # 9. Immediate Daily Teacher Absence Report (Sorted Alphabetically from ក to អ)
+        elif action == 'dispatch_daily_teachers_now':
+            target_date_str = request.POST.get('target_date', date.today().strftime('%Y-%m-%d'))
+            try:
+                t_date = datetime.strptime(target_date_str, '%Y-%m-%d').date()
+            except ValueError:
+                t_date = date.today()
+            res = send_daily_teacher_absence_telegram(target_date=t_date)
+            if res.get('success'):
+                messages.success(request, f"🚀 {res.get('message')}")
+            else:
+                messages.error(request, f"⚠️ {res.get('message')}")
+            return redirect('attendance_admin_hub')
+
     classrooms = Classroom.objects.filter(academic_year=active_year).select_related('homeroom_teacher').order_by('grade_level', 'code') if active_year else Classroom.objects.all().select_related('homeroom_teacher').order_by('grade_level', 'code')
     restrictions = AcademicCalendarRestriction.objects.all().order_by('-start_date')
     leave_requests = TeacherLeaveRequest.objects.all().select_related('teacher', 'approved_by').order_by('-created_at')
@@ -1439,10 +1482,12 @@ def send_missing_teachers_telegram_view(request):
         t_date = date.today()
 
     period_num = int(period) if period and period.isdigit() else None
+    session = request.POST.get('session')
 
     result = send_missing_teachers_telegram(
         target_date=t_date,
         period_number=period_num,
+        session=session,
         custom_chat_id=custom_chat_id,
         sender_user=request.user
     )
@@ -1455,6 +1500,7 @@ def send_missing_teachers_telegram_view(request):
 # ---------------------------------------------------------------------------
 
 @login_required
+@role_required(['ADMIN', 'TEACHER', 'STUDENT'])
 def assembly_attendance_view(request):
     """
     Pre-Class & Morning Assembly / Flag Ceremony Attendance Recording View.

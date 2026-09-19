@@ -499,7 +499,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card card-custom h-100">
                         {% if album.cover_image %}
-                        <img src="{{ album.cover_image.url }}" class="card-img-top" style="height: 220px; object-fit: cover;" alt="{{ album.title }}">
+                        <img src="{{ album.cover_image.url }}" class="card-img-top" style="height: 220px; object-fit: cover;" alt="{% get_bilingual album 'title' %}">
                         {% else %}
                         <div class="bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center text-muted" style="height: 220px;">
                             <i class="fa-solid fa-camera fs-1 opacity-25"></i>
@@ -509,7 +509,7 @@
                             <div>
                                 <h6 class="fw-bold mb-1">
                                     <a href="{% url 'website_album_detail' album.id %}" class="text-dark text-decoration-none">
-                                        {{ album.title }}
+                                        {% get_bilingual album 'title' %}
                                     </a>
                                 </h6>
                                 <small class="text-muted"><i class="fa-solid fa-calendar-day me-1"></i>{{ album.event_date|default:album.created_at|date:"d-m-Y" }}</small>
@@ -607,7 +607,7 @@
                         {% else %}
                         <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted p-3 text-center">
                             <i class="fa-solid fa-map-location-dot fs-2 text-primary mb-2"></i>
-                            <span class="small fw-semibold">{{ school_profile.province }}</span>
+                            <span class="small fw-semibold">{% if is_english %}{{ school_profile.street_address_en|default:"Kandal Province, Cambodia" }}{% else %}{{ school_profile.street_address|default:"ខេត្តកណ្តាល, ប្រទេសកម្ពុជា" }}{% endif %}</span>
                             <a href="{{ school_profile.google_maps_direct_url }}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
                                 <i class="fa-solid fa-arrow-up-right-from-square me-1"></i>{% lang_switch "បើកក្នុង Google Maps" "Open in Google Maps" %}
                             </a>

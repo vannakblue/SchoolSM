@@ -344,6 +344,18 @@
                             </div>
 
                             <div class="mb-3">
+                                <label class="form-label fw-bold small text-dark">
+                                    <i class="fa-solid fa-users-line text-success me-1"></i> Telegram Group គ្រូបន្ទុកថ្នាក់ (Homeroom Teachers Group Chat IDs)៖
+                                </label>
+                                <input type="text" name="homeroom_group_chat_id" class="form-control font-monospace" 
+                                       value="{{ att_settings.homeroom_group_chat_id|default:'' }}" 
+                                       placeholder="ឧ. -100192837465, -100564738291">
+                                <div class="text-muted small mt-1" style="font-size: 0.75rem;">
+                                    * សម្រាប់ទទួលការជូនដំណឹងអវត្តមានសិស្សតម្រៀបតាមអក្សរពី ក ដល់ អ និងតាមលំដាប់ថ្នាក់ 7A, 7B... 12B។
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
                                 <label class="form-label fw-bold small text-dark">Group Telegram ផ្សេងៗទៀតតាមការកំណត់ (Custom Group Chat IDs)៖</label>
                                 <input type="text" name="custom_dispatch_groups" class="form-control font-monospace" 
                                        value="{{ att_settings.custom_dispatch_groups|default:'' }}" 
@@ -411,7 +423,13 @@
                                 </button>
                                 <div class="btn-group">
                                     <button type="button" class="btn btn-outline-primary fw-bold btn-sm" data-bs-toggle="modal" data-bs-target="#dispatchHourlyModal">
-                                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើតាមម៉ោងឥឡូវនេះ
+                                        <i class="fa-solid fa-paper-plane me-1"></i> ផ្ញើតាមម៉ោង
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning fw-bold btn-sm" data-bs-toggle="modal" data-bs-target="#dispatchGradesModal">
+                                        <i class="fa-solid fa-list-check me-1"></i> របាយការណ៍សិស្ស ៧-១២
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger fw-bold btn-sm" data-bs-toggle="modal" data-bs-target="#dispatchTeachersModal">
+                                        <i class="fa-solid fa-user-xmark me-1"></i> របាយការណ៍គ្រូប្រចាំថ្ងៃ
                                     </button>
                                     <button type="button" class="btn btn-outline-info fw-bold btn-sm" data-bs-toggle="modal" data-bs-target="#dispatchNowModal">
                                         <i class="fa-solid fa-chart-pie me-1"></i> សង្ខេបប្រចាំថ្ងៃ
@@ -1191,6 +1209,108 @@
                 <div class="modal-footer bg-light border-0">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បិទ</button>
                     <button type="submit" class="btn btn-primary fw-bold px-4">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារឥឡូវនេះ (Dispatch Now)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Instant Daily Grade-by-Grade Student Absence Telegram Dispatch (Grades 7 to 12) -->
+<div class="modal fade" id="dispatchGradesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-warning text-dark border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-list-check me-2"></i> ផ្ញើរបាយការណ៍អវត្តមានសិស្សតាមកម្រិតថ្នាក់ (៧-១២)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="dispatch_daily_grades_now">
+                <div class="modal-body p-4">
+                    <div class="alert alert-warning border-0 rounded-3 small mb-3">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        ប្រព័ន្ធនឹងបាញ់សាររបាយការណ៍អវត្តមានសិស្សប្រចាំថ្ងៃចែកតាមកម្រិតថ្នាក់ (កម្រិតទី ៧ ដល់ ទី១២) ដោយ<strong>រៀបតាមថ្នាក់ (7A, 7B... 12A, 12B)</strong> និង<strong>តម្រៀបតាមឈ្មោះសិស្សពី ក ដល់ អ</strong> ទៅកាន់ <strong>Telegram Group គ្រូបន្ទុកថ្នាក់, គណៈគ្រប់គ្រង និង Group ផ្សេងៗ</strong>។
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">កាលបរិច្ឆេទ (Date)៖</label>
+                        <input type="date" name="target_date" class="form-control" value="{{ today_str }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បិទ</button>
+                    <button type="submit" class="btn btn-warning fw-bold px-4">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារឥឡូវនេះ (Dispatch Now)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Instant School-Wide Daily Summary Telegram Dispatch -->
+<div class="modal fade" id="dispatchNowModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-info text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-chart-pie me-2"></i> ផ្ញើរបាយការណ៍សង្ខេបវត្តមានប្រចាំថ្ងៃ (Daily Digest)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="dispatch_daily_now">
+                <div class="modal-body p-4">
+                    <div class="alert alert-info border-0 rounded-3 small mb-3">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        ប្រព័ន្ធនឹងបាញ់របាយការណ៍សង្ខេបស្ថិតិវត្តមានទូទាំងសាលា (សិស្ស & គ្រូ) ព្រមទាំងរបាយការណ៍អវត្តមានសិស្សតាមកម្រិតថ្នាក់ (៧-១២) ទៅកាន់ Telegram Management & Homeroom Groups។
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">កាលបរិច្ឆេទ (Date)៖</label>
+                        <input type="date" name="target_date" class="form-control" value="{{ today_str }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បិទ</button>
+                    <button type="submit" class="btn btn-info text-white fw-bold px-4">
+                        <i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារឥឡូវនេះ (Dispatch Now)
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Instant Daily Teacher Absence Telegram Dispatch (Sorted Alphabetically from ក to អ) -->
+<div class="modal fade" id="dispatchTeachersModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem;">
+            <div class="modal-header bg-danger text-white border-0 py-3">
+                <h5 class="modal-title fw-bold">
+                    <i class="fa-solid fa-user-xmark me-2"></i> ផ្ញើរបាយការណ៍អវត្តមានគ្រូប្រចាំថ្ងៃ
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="dispatch_daily_teachers_now">
+                <div class="modal-body p-4">
+                    <div class="alert alert-danger border-0 rounded-3 small mb-3">
+                        <i class="fa-solid fa-circle-info me-1"></i>
+                        ប្រព័ន្ធនឹងបាញ់សាររបាយការណ៍អវត្តមានគ្រូប្រចាំថ្ងៃ (រួមមាន៖ <strong>❌ គ្រូមិនបានបញ្ចូលអវត្តមាន</strong> និង <strong>🟡 គ្រូមានច្បាប់ឈប់សម្រាក</strong>) ដោយ<strong>តម្រៀបតាមលំដាប់អក្ខរក្រមពី ក ដល់ អ</strong> ទៅកាន់ <strong>Telegram Group គណៈគ្រប់គ្រង, Group គ្រូបន្ទុកថ្នាក់, និង Group ផ្សេងៗ</strong>។
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-dark">កាលបរិច្ឆេទ (Date)៖</label>
+                        <input type="date" name="target_date" class="form-control" value="{{ today_str }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">បិទ</button>
+                    <button type="submit" class="btn btn-danger fw-bold px-4">
                         <i class="fa-solid fa-paper-plane me-1"></i> បាញ់សារឥឡូវនេះ (Dispatch Now)
                     </button>
                 </div>

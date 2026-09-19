@@ -24,6 +24,7 @@ from .utils import (
 )
 
 @login_required
+@role_required(['ADMIN'])
 def teacher_list(request):
     query = request.GET.get('q', '').strip()
     status_filter = request.GET.get('status', '')
@@ -1645,7 +1646,7 @@ def _get_moeys_staff_roster_data():
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def moeys_staff_roster(request):
     """
     Interactive web view matching the official MoEYS Civil Servant & Teacher Directory (2026.xlsx).
@@ -1725,7 +1726,7 @@ def moeys_staff_roster(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def moeys_staff_roster_export_excel(request):
     """
     Downloads the exact MoEYS Civil Servant & Teacher Directory (.xlsx) matching 2026.xlsx.
@@ -1749,7 +1750,7 @@ def moeys_staff_roster_export_excel(request):
 
 
 @login_required
-@role_required(['ADMIN', 'TEACHER', 'ACCOUNTANT'])
+@role_required(['ADMIN', 'TEACHER'])
 def moeys_staff_roster_print(request):
     """
     Dedicated printable view formatted for A4/A3 Landscape PDF saving (រក្សាទុកជា PDF).

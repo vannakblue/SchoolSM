@@ -66,20 +66,86 @@
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="custom-card p-3 border-start border-4 border-success h-100 shadow-sm">
-            <div class="text-muted small fw-bold">អនុញ្ញាតឱ្យប្រឡងវិញ</div>
-            <div class="display-6 fw-bold text-success">{{ total_exclusions|add:"-"|add:active_exclusions }} <span class="fs-6 text-muted fw-normal">នាក់</span></div>
-            <div class="text-muted small">ចូលរៀនឡើងវិញ</div>
+        <div class="custom-card p-3 border-start border-4 border-warning h-100 shadow-sm">
+            <div class="text-muted small fw-bold">ប្រឈមដកសិទ្ធិ (At-Risk)</div>
+            <div class="display-6 fw-bold text-warning">{{ at_risk_count }} <span class="fs-6 text-muted fw-normal">នាក់</span></div>
+            <div class="text-muted small">អវត្តមានច្រើន (Alert ប្រាប់ Admin)</div>
         </div>
     </div>
     <div class="col-6 col-md-3">
-        <div class="custom-card p-3 border-start border-4 border-warning h-100 shadow-sm">
-            <div class="text-muted small fw-bold">ការកំណត់សិទ្ធិប្រឡង</div>
-            <div class="fs-6 fw-bold text-warning-emphasis mt-1">Admin / គណៈគ្រប់គ្រង</div>
-            <div class="text-muted small">កំណត់ដោយផ្ទាល់ (គ្មានស្វ័យប្រវត្តិ)</div>
+        <div class="custom-card p-3 border-start border-4 border-info h-100 shadow-sm">
+            <div class="text-muted small fw-bold">គោលការណ៍គណនាសិទ្ធិ</div>
+            <div class="fs-6 fw-bold text-info-emphasis mt-1">Admin បិទ ឬបើក</div>
+            <div class="text-muted small">ប្រព័ន្ធ Alert • សម្រេចដោយ Admin</div>
         </div>
     </div>
 </div>
+
+<!-- At-Risk Students Alert Section -->
+{% if at_risk_count > 0 %}
+<div class="custom-card p-3.5 mb-4 shadow-sm border border-warning-subtle" style="background-color: #fffbeb;">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2.5">
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge bg-warning text-dark fs-6 rounded-pill px-2.5 py-1 shadow-xs">
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> Alert ជូនដំណឹង
+            </span>
+            <span class="fw-bold text-dark fs-6">
+                រកឃើញសិស្ស <strong class="text-danger fs-5">{{ at_risk_count }}</strong> នាក់ប្រឈមនឹងការដកសិទ្ធិប្រឡង (អវត្តមានឥតច្បាប់ច្រើន)
+            </span>
+        </div>
+        <div class="small text-muted">
+            <i class="fa-solid fa-shield-halved text-primary me-1"></i><strong>គោលការណ៍សាលា៖</strong> ប្រព័ន្ធ Alert ប្រាប់ Admin ប៉ុណ្ណោះ។ ការដកសិទ្ធិ ឬបើកសិទ្ធិ ត្រូវបិទ ឬបើកដោយ Admin ទាំងអស់។
+        </div>
+    </div>
+    
+    <div class="table-responsive bg-white rounded-3 border">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th class="ps-3">កូដ & ឈ្មោះសិស្ស</th>
+                    <th>ថ្នាក់រៀន</th>
+                    <th>អវត្តមានឥតច្បាប់</th>
+                    <th>កម្រិតហានិភ័យ</th>
+                    <th>ស្ថានភាពបច្ចុប្បន្ន</th>
+                    <th class="text-end pe-3">ចំណាត់ការ Admin (បិទ/បើក)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stu in at_risk_students %}
+                <tr>
+                    <td class="ps-3">
+                        <div class="fw-bold text-dark">{{ stu.khmer_name }}</div>
+                        <div class="text-muted small">{{ stu.student_id }}</div>
+                    </td>
+                    <td><span class="badge bg-light text-dark border">{{ stu.classroom.name|default:"-" }}</span></td>
+                    <td>
+                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle fw-bold">
+                            {{ stu.exam_at_risk_info.absent_days }} ថ្ងៃ ({{ stu.exam_at_risk_info.absent_sessions }} វេន)
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-warning text-dark"><i class="fa-solid fa-triangle-exclamation me-1"></i>ប្រឈមខ្ពស់</span>
+                    </td>
+                    <td>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1 fw-bold">
+                            <i class="fa-solid fa-circle-check me-1"></i> មានសិទ្ធិប្រឡង
+                        </span>
+                    </td>
+                    <td class="text-end pe-3">
+                        {% if is_admin %}
+                        <button type="button" class="btn btn-sm btn-danger fw-bold rounded-pill shadow-xs"
+                                onclick="openDirectExcludeModal({{ stu.id }}, '{{ stu.khmer_name|escapejs }}', '{{ stu.classroom.name|default:''|escapejs }}', 'អវត្តមានឥតច្បាប់ {{ stu.exam_at_risk_info.absent_days }} ថ្ងៃ')">
+                            <i class="fa-solid fa-ban me-1"></i> ដកសិទ្ធិប្រឡង (Suspend)
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 
 <!-- Filters Bar -->
 <div class="custom-card p-3 mb-4 shadow-sm">
@@ -374,9 +440,9 @@
                         <textarea name="notes" class="form-control" rows="2" placeholder="បញ្ជាក់ពីមូលហេតុនៃការមិនឱ្យប្រឡង..."></textarea>
                     </div>
 
-                    <div class="alert alert-info py-2 px-3 small mt-3 mb-0 border-0">
-                        <i class="fa-solid fa-circle-info me-1"></i>
-                        ការលើកលែងសិស្សមិនឱ្យប្រឡង ត្រូវកំណត់ដោយផ្ទាល់ពី Admin ឬគណៈគ្រប់គ្រងសាលារៀន សម្រាប់សិស្សដែលឈប់រៀន ផ្អាកការសិក្សា ឬជាប់វិន័យ។
+                    <div class="alert alert-info py-2 px-3 small mt-3 mb-0 border-0 bg-info-subtle text-dark">
+                        <i class="fa-solid fa-shield-halved text-info me-1"></i>
+                        <strong>គោលការណ៍គណនាសិទ្ធិប្រឡង៖</strong> ប្រព័ន្ធគ្រាន់តែ Alert ជូនដំណឹងបញ្ជាក់ប្រាប់ Admin អំពីសិស្សប្រឈម។ ចំពោះ Exam Suspension គឺត្រូវបិទ ឬបើកដោយផ្ទាល់ដោយ Admin ទាំងអស់ (Manual Control Only)។
                     </div>
                 </div>
                 <div class="modal-footer bg-light py-2">
@@ -391,6 +457,29 @@
 </div>
 
 <script>
+function openDirectExcludeModal(stuId, stuName, className, reasonText) {
+    const stuSelect = document.getElementById('modal_student_select');
+    const reasonSelect = document.querySelector('#createExclusionModal select[name="reason"]');
+    const notesArea = document.querySelector('#createExclusionModal textarea[name="notes"]');
+    
+    if (stuSelect) {
+        stuSelect.disabled = false;
+        stuSelect.innerHTML = `<option value="${stuId}" selected>${stuName} (${className})</option>`;
+    }
+    if (reasonSelect) {
+        reasonSelect.value = 'UNEXCUSED_ABSENCE';
+    }
+    if (notesArea) {
+        notesArea.value = reasonText;
+    }
+    
+    const modalEl = document.getElementById('createExclusionModal');
+    if (modalEl) {
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
 function loadStudentsForClass(classroomId) {
     const studentSelect = document.getElementById('modal_student_select');
     if (!classroomId) {
